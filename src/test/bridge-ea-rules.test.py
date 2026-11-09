@@ -19,12 +19,25 @@ class BridgeRules(unittest.TestCase):
             r'const double (?:FIXED_LOT|PROFIT_TARGET_USD) = [^;]+;', source))
         lot_rule = re.search(r'bool LotAllowed\([^}]+\}', source).group()
         target_rule = re.search(r'bool TargetReached\([^}]+\}', source).group()
+        buy = re.search(r'trade\.Buy\([^;]+?\)', source).group()
+        sell = re.search(r'trade\.Sell\([^;]+?\)', source).group()
         program = '''#include <cmath>
 #include <cassert>
 #define MathAbs std::abs
 #define MathRound std::round
 ''' + constants + '\n' + lot_rule + '\n' + target_rule + '''
+struct Trade {
+  bool Buy(double lot,const char*,double,double sl,double tp,const char*) {
+    assert(lot==0.01); assert(sl==0); assert(tp==0); return true;
+  }
+  bool Sell(double lot,const char* s,double p,double sl,double tp,const char* c) {
+    return Buy(lot,s,p,sl,tp,c);
+  }
+};
 int main() {
+  Trade trade;
+  const char* symbol="XAUUSDm"; const char* comment="AP3 test";
+''' + buy + ';\n' + sell + ';\n' + '''
   assert(FIXED_LOT == 0.01);
   assert(LotAllowed(0.01,100,0.01));
   assert(!LotAllowed(0.1,100,0.1));
