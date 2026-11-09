@@ -15,4 +15,5 @@
 - Use Nitro's Netlify preset for independent deployments; the existing Lovable wrapper preserves the managed preview target.
 - Home-screen installation is manifest-only, with no app-shell service worker; fresh signals must continue to come from the server, not offline caches.
 - Reuse the shared BrandLogo asset for the site, favicon and app icons so branding remains consistent.
+- Bridge EA revisions consume the existing app order protocol rather than generating local signals; this preserves Auto Trade and manual-entry behavior without changing other users' app settings.
 - Signal reads require a signed-in user with an active trial, premium period or admin role, enforced by database policies and server checks; premium is granted only by the database activation function (admin approval or verified crypto payment callback), never by the browser.

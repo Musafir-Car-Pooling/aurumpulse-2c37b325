@@ -18,3 +18,5 @@
 - [x] Binance address added; admin can add/update manual methods.
 - [x] Admin access for pp@gmail.com — account created on the server, email confirmed, admin role granted.
 - [x] Side menu and a sign-in option stay available when Premium mode is off.
+- [x] Deliver bridge EA v3 with fixed 0.01 lot, no SL/TP, and USD 1 profit exit; numeric rules tested.
+- [ ] Compile bridge EA v3 and verify an entry/profit-close cycle on MT5 demo — MetaEditor and a broker terminal are unavailable here.
