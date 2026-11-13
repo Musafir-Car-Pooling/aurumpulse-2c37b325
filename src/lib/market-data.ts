@@ -8,9 +8,10 @@ async function candles(market: Market, interval: string, range: string): Promise
   if (!response.ok) throw new Error(`Market provider unavailable (${response.status})`);
   const parsed = chartSchema.parse(await response.json()).chart.result?.[0], quote = parsed?.indicators.quote[0];
   if (!parsed || !quote) throw new Error("Market data unavailable");
+  const scale = MARKETS[market].scale;
   return parsed.timestamp.flatMap((time,i) => {
     const c = quote.close[i], h = quote.high[i], l = quote.low[i];
-    return typeof c === "number" && typeof h === "number" && typeof l === "number" && [c,h,l].every(Number.isFinite) ? [{c,h,l,time}] : [];
+    return typeof c === "number" && typeof h === "number" && typeof l === "number" && [c,h,l].every(Number.isFinite) ? [{c:c/scale,h:h/scale,l:l/scale,time}] : [];
   });
 }
 export async function scanMarket(market: Market): Promise<Scan> {
@@ -22,7 +23,7 @@ export async function scanMarket(market: Market): Promise<Scan> {
     if (!latest || !hourly) throw new Error("Insufficient market history");
     if (now.getTime() - latest.time * 1000 > 30 * 60000 || now.getTime() - hourly.time * 1000 > 90 * 60000) return {...base,result:null,status:"stale",error:"The price feed is delayed — no signal alerts."};
     let spot = latest.c;
-    if (market === "XAUUSD") {
+    if (market === "XAUUSD") { // gold spot feed is unscaled; USTEC_x100m scaling already applied to candles
       try {
         const res = await fetch("https://api.gold-api.com/price/XAU", {signal:AbortSignal.timeout(3000)});
         if (res.ok) {
