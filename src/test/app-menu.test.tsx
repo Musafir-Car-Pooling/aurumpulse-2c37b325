@@ -50,10 +50,10 @@ describe("side menu when premium is off", () => {
     expect(screen.queryByRole("link", { name: /Sign in or create account/i })).toBeNull();
   });
 
-  it("hides packages and MT5 but keeps the admin panel for an admin", async () => {
+  it("hides packages, shows Connect MT5 and keeps the admin panel for an admin", async () => {
     await openMenu({ email: "pp@gmail.com", status: "Admin", isAdmin: true, premium: false, signedIn: true });
     expect(screen.queryByRole("link", { name: /Premium packages/i })).toBeNull();
-    expect(screen.queryByRole("link", { name: /Connect MT5/i })).toBeNull();
+    expect(screen.getByRole("link", { name: /Connect MT5/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Admin panel/i })).toBeInTheDocument();
   });
 });
