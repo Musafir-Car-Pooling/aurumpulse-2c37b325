@@ -44,7 +44,7 @@ function Mt5Page() {
             <div className="mt-2 flex items-center gap-2"><code className="min-w-0 flex-1 break-all text-xs">{key}</code><Button size="icon" variant="ghost" aria-label="Copy key" onClick={() => { void navigator.clipboard.writeText(key); setMsg("Key copied."); }}><Copy /></Button></div></div>}
           {msg && <p role="status" className="mt-2 text-xs text-gold">{msg}</p>}
           <div className="mt-4 flex gap-2">
-            <Button className="btn-gold flex-1" onClick={async () => { try { const r = await create(); setKey(r.key); setMsg(""); void load(); } catch { setMsg("You need an active trial or premium package."); } }}>{link ? "Generate new key" : "Generate connect key"}</Button>
+            <Button className="btn-gold flex-1" onClick={async () => { try { const r = await create(); setKey(r.key); setMsg(""); void load(); } catch { setMsg("Could not create key. Try again."); } }}>{link ? "Generate new key" : "Generate connect key"}</Button>
             {link && <Button variant="outline" onClick={async () => { await revoke(); setKey(""); setMsg("Disconnected."); void load(); }}>Disconnect</Button>}
           </div>
         </section>

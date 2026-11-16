@@ -19,7 +19,7 @@ export function AppMenu({ email, status, isAdmin, premium = true, signedIn = tru
   const items = [
     { to: "/", label: "Live signals", icon: LayoutDashboard },
     ...(premium ? [{ to: "/packages", label: "Premium packages", icon: Crown }] : []),
-    ...(premium ? [{ to: "/mt5", label: "Connect MT5", icon: Plug }] : []),
+    ...(true ? [{ to: "/mt5", label: "Connect MT5", icon: Plug }] : []),
     ...(isAdmin ? [{ to: "/admin", label: "Admin panel", icon: Shield }] : []),
   ] as const;
   return <Sheet>

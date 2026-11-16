@@ -1,0 +1,1 @@
+UPDATE public.app_settings SET premium_enabled=false WHERE id=1;

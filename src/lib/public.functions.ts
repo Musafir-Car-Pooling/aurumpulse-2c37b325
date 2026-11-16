@@ -20,8 +20,8 @@ function publicClient() {
 }
 
 async function premiumOn() {
-  const { data } = await publicClient().from("app_settings").select("premium_enabled").eq("id", 1).maybeSingle();
-  return data?.premium_enabled !== false;
+  // Premium/trial module removed: the app is free for everyone.
+  return false;
 }
 
 export const getPremiumMode = createServerFn({ method: "GET" }).handler(async () => ({ premium: await premiumOn() }));

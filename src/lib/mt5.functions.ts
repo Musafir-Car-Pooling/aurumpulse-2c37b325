@@ -16,8 +16,6 @@ export const getMt5Link = createServerFn({ method: "GET" })
 export const createMt5Key = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: ok } = await context.supabase.rpc("has_signal_access", { _user_id: context.userId });
-    if (!ok) throw new Error("PREMIUM_REQUIRED");
     const key = newKey();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("mt5_links").upsert({ user_id: context.userId, key_hash: await hashKey(key), created_at: new Date().toISOString(), last_seen: null });
@@ -37,8 +35,6 @@ export const setAutoTrade = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ on: z.boolean() }).parse(i))
   .handler(async ({ data, context }) => {
-    const { data: ok } = await context.supabase.rpc("has_signal_access", { _user_id: context.userId });
-    if (data.on && !ok) throw new Error("PREMIUM_REQUIRED");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin.from("mt5_links").update({ auto_trade: data.on }).eq("user_id", context.userId).select("auto_trade").maybeSingle();
     if (error) throw new Error("Could not save");
@@ -50,8 +46,6 @@ export const placeMt5Order = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ market: marketEnum }).parse(i))
   .handler(async ({ data, context }) => {
-    const { data: ok } = await context.supabase.rpc("has_signal_access", { _user_id: context.userId });
-    if (!ok) throw new Error("PREMIUM_REQUIRED");
     const { data: link } = await context.supabase.from("mt5_links").select("user_id").eq("user_id", context.userId).maybeSingle();
     if (!link) throw new Error("MT5_NOT_CONNECTED");
     const scan = await scanMarket(data.market);
