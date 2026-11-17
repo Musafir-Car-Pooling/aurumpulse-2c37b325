@@ -57,6 +57,13 @@
       "when": 1794836154063,
       "tag": "0007_disable_premium",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794941553523,
+      "tag": "0008_restrict_app_settings_read",
+      "breakpoints": true
     }
   ]
 }
