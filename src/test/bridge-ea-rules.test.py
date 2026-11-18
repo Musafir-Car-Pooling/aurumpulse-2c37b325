@@ -9,23 +9,24 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v4.mq5')
+SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v5.mq5')
 
 
 class BridgeRules(unittest.TestCase):
     def test_fixed_lot_and_two_usd_exit(self):
         source = SOURCE.read_text()
         constants = '\n'.join(re.findall(
-            r'const double (?:FIXED_LOT|PROFIT_TARGET_USD) = [^;]+;', source))
+            r'const double (?:FIXED_LOT|PROFIT_TARGET_USD|LOSS_LIMIT_USD) = [^;]+;', source))
         lot_rule = re.search(r'bool LotAllowed\([^}]+\}', source).group()
         target_rule = re.search(r'bool TargetReached\([^}]+\}', source).group()
+        loss_rule = re.search(r'bool LossHit\([^}]+\}', source).group()
         buy = re.search(r'trade\.Buy\([^;]+?\)', source).group()
         sell = re.search(r'trade\.Sell\([^;]+?\)', source).group()
         program = '''#include <cmath>
 #include <cassert>
 #define MathAbs std::abs
 #define MathRound std::round
-''' + constants + '\n' + lot_rule + '\n' + target_rule + '''
+''' + constants + '\n' + lot_rule + '\n' + target_rule + '\n' + loss_rule + '''
 struct Trade {
   bool Buy(double lot,const char*,double,double sl,double tp,const char*) {
     assert(lot==0.01); assert(sl==0); assert(tp==0); return true;
@@ -47,6 +48,12 @@ int main() {
   assert(!TargetReached(1.99));
   assert(TargetReached(2.00));
   assert(TargetReached(2.01)); assert(!TargetReached(1.00));
+  assert(LOSS_LIMIT_USD == 3.00);
+  assert(LossHit(-3.00));
+  assert(LossHit(-3.01));
+  assert(LossHit(-10));
+  assert(!LossHit(-2.99));
+  assert(!LossHit(0));
 }
 '''
         with tempfile.TemporaryDirectory() as folder:
