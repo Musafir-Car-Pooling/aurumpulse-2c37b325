@@ -9,11 +9,11 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v3.mq5')
+SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v4.mq5')
 
 
 class BridgeRules(unittest.TestCase):
-    def test_fixed_lot_and_one_usd_exit(self):
+    def test_fixed_lot_and_two_usd_exit(self):
         source = SOURCE.read_text()
         constants = '\n'.join(re.findall(
             r'const double (?:FIXED_LOT|PROFIT_TARGET_USD) = [^;]+;', source))
@@ -44,9 +44,9 @@ int main() {
   assert(!LotAllowed(0.01,100,0.02));
   assert(!LotAllowed(0.01,100,0));
   assert(!TargetReached(-10));
-  assert(!TargetReached(0.99));
-  assert(TargetReached(1.00));
-  assert(TargetReached(1.01));
+  assert(!TargetReached(1.99));
+  assert(TargetReached(2.00));
+  assert(TargetReached(2.01)); assert(!TargetReached(1.00));
 }
 '''
         with tempfile.TemporaryDirectory() as folder:

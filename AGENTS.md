@@ -17,3 +17,4 @@
 - Reuse the shared BrandLogo asset for the site, favicon and app icons so branding remains consistent.
 - Bridge EA revisions consume the existing app order protocol rather than generating local signals; this preserves Auto Trade and manual-entry behavior without changing other users' app settings.
 - Signal reads require a signed-in user with an active trial, premium period or admin role, enforced by database policies and server checks; premium is granted only by the database activation function (admin approval or verified crypto payment callback), never by the browser.
+- Bridge EA v4 reads live per-market signals from the key-authenticated /api/public/mt5/signal endpoint and mirrors holdDecision() in src/lib/mt5.ts; keeps EA exit logic identical to the tested app rule.

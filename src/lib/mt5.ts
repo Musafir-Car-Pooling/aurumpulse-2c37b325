@@ -27,3 +27,24 @@ export function pollLine(o: OrderRow, withLevels: boolean) {
 export function isStale(createdAt: string, now = Date.now()) {
   return now - new Date(createdAt).getTime() > ORDER_MAX_AGE_MS;
 }
+
+export const PROFIT_TARGET_USD = 2;
+export type LiveSignal = { direction: string; confidence: number; trend1h: "bull" | "bear" | "neutral"; fresh: boolean };
+/** Smart exit: below $2 never closes; at $2+ hold while the live signal still supports the trade, else close. */
+export function holdDecision(side: "BUY" | "SELL", market: string, profit: number, peak: number, sig: LiveSignal | null): "HOLD" | "CLOSE" | "WAIT_TARGET" {
+  if (profit < PROFIT_TARGET_USD) return "WAIT_TARGET";
+  if (peak > PROFIT_TARGET_USD && profit <= Math.max(PROFIT_TARGET_USD, peak * 0.6)) return "CLOSE";
+  if (!sig || !sig.fresh || sig.direction !== side) return "CLOSE";
+  const gold = market === "XAUUSD";
+  const trendOk = sig.trend1h === (side === "BUY" ? "bull" : "bear");
+  if (sig.confidence < (gold ? 70 : 60) || (gold && !trendOk)) return "CLOSE";
+  return "HOLD";
+}
+
+type ScanResult = { direction?: string; confidence?: number; validUntil?: string; indicators?: { name: string; bias: string }[] } | null;
+export function signalLine(r: ScanResult, now = Date.now()) {
+  if (!r?.direction) return "NONE";
+  const t = r.indicators?.find(i => i.name.startsWith("EMA 50/200"))?.bias ?? "neutral";
+  const fresh = !!r.validUntil && new Date(r.validUntil).getTime() > now ? 1 : 0;
+  return `${r.direction}|${r.confidence ?? 0}|${t}|${fresh}`;
+}
