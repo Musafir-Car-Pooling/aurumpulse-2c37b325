@@ -64,6 +64,13 @@
       "when": 1794941553523,
       "tag": "0008_restrict_app_settings_read",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795003167281,
+      "tag": "0009_auto_orders_requeue_after_expiry",
+      "breakpoints": true
     }
   ]
 }
