@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v5.mq5')
+SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v6.mq5')
 
 
 class BridgeRules(unittest.TestCase):
@@ -65,3 +65,6 @@ int main() {
 
 if __name__ == '__main__':
     unittest.main()
+def test_resolves_any_suffix_symbol():
+    s = SOURCE.read_text()
+    assert 'SymbolsTotal(false)' in s and 'StringFind(up, want)' in s
