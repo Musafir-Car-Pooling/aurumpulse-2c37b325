@@ -31,16 +31,10 @@ export function isStale(createdAt: string, now = Date.now()) {
 export const PROFIT_TARGET_USD = 2;
 export const LOSS_LIMIT_USD = 3;
 export type LiveSignal = { direction: string; confidence: number; trend1h: "bull" | "bear" | "neutral"; fresh: boolean };
-/** Smart exit: at -$3 always closes; below $2 never closes otherwise; at $2+ hold while the live signal still supports the trade, else close. */
-export function holdDecision(side: "BUY" | "SELL", market: string, profit: number, peak: number, sig: LiveSignal | null): "HOLD" | "CLOSE" | "WAIT_TARGET" {
-  if (profit <= -LOSS_LIMIT_USD) return "CLOSE";
-  if (profit < PROFIT_TARGET_USD) return "WAIT_TARGET";
-  if (peak > PROFIT_TARGET_USD && profit <= Math.max(PROFIT_TARGET_USD, peak * 0.6)) return "CLOSE";
-  if (!sig || !sig.fresh || sig.direction !== side) return "CLOSE";
-  const gold = market === "XAUUSD";
-  const trendOk = sig.trend1h === (side === "BUY" ? "bull" : "bear");
-  if (sig.confidence < (gold ? 70 : 60) || (gold && !trendOk)) return "CLOSE";
-  return "HOLD";
+/** Quick exit (Bridge v8): closes at -$3 loss or at $2+ profit; never holds a winning trade. */
+export function holdDecision(_side: "BUY" | "SELL", _market: string, profit: number, _peak: number, _sig: LiveSignal | null): "CLOSE" | "WAIT_TARGET" {
+  if (profit <= -LOSS_LIMIT_USD || profit >= PROFIT_TARGET_USD) return "CLOSE";
+  return "WAIT_TARGET";
 }
 
 type ScanResult = { direction?: string; confidence?: number; validUntil?: string; indicators?: { name: string; bias: string }[] } | null;
