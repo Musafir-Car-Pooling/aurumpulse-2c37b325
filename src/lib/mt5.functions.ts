@@ -53,7 +53,7 @@ export const placeMt5Order = createServerFn({ method: "POST" })
     if (!s || !canTrade(s)) throw new Error("NO_LIVE_SIGNAL");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin.from("trade_orders").insert({
-      user_id: context.userId, market: data.market, direction: s.direction, lot: 0.02,
+      user_id: context.userId, market: data.market, direction: s.direction, lot: 0.01,
       signal: { entry: s.entry, stopLoss: s.stopLoss, tp1: s.tp1, tp2: s.tp2, time: s.time, validUntil: s.validUntil },
     }).select("id,direction").single();
     if (error || !row) throw new Error("Could not send order");

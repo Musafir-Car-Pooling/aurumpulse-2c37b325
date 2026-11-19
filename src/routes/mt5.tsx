@@ -50,7 +50,7 @@ function Mt5Page() {
         </section>
         {link && <section className="card-glow flex items-center justify-between gap-4 rounded-xl p-5">
           <div><p className="font-semibold">Auto trade</p>
-            <p className="text-xs text-muted-foreground">{link.auto_trade ? "On — every new BUY/SELL signal (all 6 pairs) is sent to MT5 automatically (0.01 lot, no SL/TP)." : "Off — only signals where you tap \"Take entry now\" are traded."}</p></div>
+            <p className="text-xs text-muted-foreground">{link.auto_trade ? "On — XAUUSD (gold) only: bot enters on the live signal, closes in profit, then takes the next entry. Other pairs: use Take entry now." : "Off — only signals where you tap \"Take entry now\" are traded."}</p></div>
           <Switch aria-label="Auto trade" checked={!!link.auto_trade} onCheckedChange={async on => { try { await setAuto({ data: { on } }); setMsg(on ? "Auto trade is on." : "Auto trade is off."); void load(); } catch { setMsg("Could not change auto trade."); } }} />
         </section>}
         <section className="rounded-xl border border-border bg-card p-5 text-sm leading-relaxed">

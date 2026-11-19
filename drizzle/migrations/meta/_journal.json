@@ -71,6 +71,13 @@
       "when": 1795003167281,
       "tag": "0009_auto_orders_requeue_after_expiry",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795072350970,
+      "tag": "0010_auto_trade_gold_only_continuous",
+      "breakpoints": true
     }
   ]
 }

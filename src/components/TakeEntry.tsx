@@ -37,7 +37,7 @@ export function TakeEntry({ market, direction }: { market: Market; direction: "B
   const tone = order?.status === "executed" ? "text-bull" : order?.status === "failed" || order?.status === "expired" ? "text-bear" : "text-gold";
   return <div className="space-y-2">
     <label className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 text-sm">
-      <span><span className="font-semibold">Auto trade</span><span className="block text-xs text-muted-foreground">{auto ? "MT5 takes every new signal automatically" : "Off — only Take entry now trades"}</span></span>
+      <span><span className="font-semibold">Auto trade</span><span className="block text-xs text-muted-foreground">{auto ? "On — XAUUSD only, entries follow live gold signals" : "Off — only Take entry now trades"}</span></span>
       <Switch aria-label="Auto trade" checked={auto} onCheckedChange={async on => { setAutoOn(on); try { await setAuto({ data: { on } }); } catch { setAutoOn(!on); setErr("Could not change auto trade."); } }} />
     </label>
     <Button onClick={() => setOpen(true)} disabled={busy || (!!order && ["pending", "sent"].includes(order.status))} className={`h-14 w-full rounded-lg font-display text-xl ${direction === "BUY" ? "bg-bull" : "bg-bear"} text-background hover:opacity-90`}><Zap />Take entry now</Button>
@@ -45,8 +45,8 @@ export function TakeEntry({ market, direction }: { market: Market; direction: "B
     {err && <p role="alert" className="text-sm text-bear">{err}</p>}
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogContent className="border-gold/30">
-        <AlertDialogHeader><AlertDialogTitle className="font-display text-3xl">{direction} {market} 0.02 lot?</AlertDialogTitle>
-          <AlertDialogDescription>Your connected MT5 bot will place this trade at market price with the signal's SL, TP1 and TP2. You can close it yourself anytime in MT5. Real money is at risk.</AlertDialogDescription></AlertDialogHeader>
+        <AlertDialogHeader><AlertDialogTitle className="font-display text-3xl">{direction} {market} 0.01 lot?</AlertDialogTitle>
+          <AlertDialogDescription>Your connected MT5 bot will place this trade at market price with no SL/TP. The bot closes it in profit (or at the USD 3 loss limit). Real money is at risk.</AlertDialogDescription></AlertDialogHeader>
         <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="btn-gold" onClick={() => void send()}>Yes, take entry</AlertDialogAction></AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
