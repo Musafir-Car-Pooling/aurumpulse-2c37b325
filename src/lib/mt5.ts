@@ -33,9 +33,13 @@ export const LOSS_LIMIT_USD = 3;
 export type LiveSignal = { direction: string; confidence: number; trend1h: "bull" | "bear" | "neutral"; fresh: boolean };
 export const MAX_PROFIT_USD = 9;
 export const GIVEBACK = 0.4;
+/** Max hold profit scales with lot: USD 9 per 0.01 lot (0.02 = 18, 0.05 = 45). */
+export const maxProfitFor = (lot: number) => MAX_PROFIT_USD * Math.max(1, Math.round(lot / 0.01));
+/** Lot scales with balance: tier lot at USD 500, capped at 0.05 per USD 500. */
+export const scaledLot = (tierLot: number, balance: number) => { const k = Math.max(1, balance / 500); return Math.floor(Math.min(tierLot * k, 0.05 * k) * 100 + 1e-7) / 100; };
 /** Bridge v9: close at -$3; at $2+ hold only while the live signal is strong in the same direction (max $9, 40% giveback guard). */
-export function holdDecision(side: "BUY" | "SELL", market: string, profit: number, peak: number, sig: LiveSignal | null): "CLOSE" | "HOLD" | "WAIT_TARGET" {
-  if (profit <= -LOSS_LIMIT_USD || profit >= MAX_PROFIT_USD) return "CLOSE";
+export function holdDecision(side: "BUY" | "SELL", market: string, profit: number, peak: number, sig: LiveSignal | null, lot = 0.01): "CLOSE" | "HOLD" | "WAIT_TARGET" {
+  if (profit <= -LOSS_LIMIT_USD || profit >= maxProfitFor(lot)) return "CLOSE";
   if (profit < PROFIT_TARGET_USD) return "WAIT_TARGET";
   const gold = market === "XAUUSD";
   const strong = !!sig && sig.fresh && sig.direction === side && sig.confidence >= (gold ? 70 : 60) && (!gold || sig.trend1h === (side === "BUY" ? "bull" : "bear"));
@@ -47,7 +51,7 @@ export function holdDecision(side: "BUY" | "SELL", market: string, profit: numbe
 type ScanResult = { direction?: string; support?: number; resistance?: number; confidence?: number; validUntil?: string; indicators?: { name: string; bias: string }[] } | null;
 /** Bridge v10 lot sizing from signal strength. */
 export function lotForConfidence(confidence: number) {
-  return confidence >= 85 ? 0.03 : confidence >= 75 ? 0.02 : 0.01;
+  return confidence >= 90 ? 0.05 : confidence >= 85 ? 0.03 : confidence >= 75 ? 0.02 : 0.01;
 }
 export function signalLine(r: ScanResult, now = Date.now(), v2 = false) {
   if (!r?.direction) return "NONE";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { holdDecision, lotForConfidence, signalLine } from "@/lib/mt5";
+import { holdDecision, lotForConfidence, maxProfitFor, scaledLot, signalLine } from "@/lib/mt5";
 
 const strong = { direction: "BUY", confidence: 80, trend1h: "bull" as const, fresh: true };
 const weak = { ...strong, confidence: 50 };
@@ -19,5 +19,17 @@ describe("Bridge v9 exits", () => {
     expect(lotForConfidence(70)).toBe(0.01);
     expect(lotForConfidence(75)).toBe(0.02);
     expect(lotForConfidence(85)).toBe(0.03);
+    expect(lotForConfidence(90)).toBe(0.05);
+  });
+  it("max lot 0.05 at USD 500, scales with balance", () => {
+    expect(scaledLot(0.05, 500)).toBe(0.05);
+    expect(scaledLot(0.05, 1000)).toBe(0.1);
+    expect(scaledLot(0.02, 500)).toBe(0.02);
+    expect(scaledLot(0.01, 200)).toBe(0.01);
+  });
+  it("hold cap is USD 9 per 0.01 lot", () => {
+    expect(maxProfitFor(0.01)).toBe(9); expect(maxProfitFor(0.02)).toBe(18); expect(maxProfitFor(0.05)).toBe(45);
+    expect(holdDecision("BUY", "XAUUSD", 17, 17, strong, 0.02)).toBe("HOLD");
+    expect(holdDecision("BUY", "XAUUSD", 18, 18, strong, 0.02)).toBe("CLOSE");
   });
 });

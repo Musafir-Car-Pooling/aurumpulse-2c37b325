@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v11.mq5')
+SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v12.mq5')
 
 
 class BridgeRules(unittest.TestCase):
@@ -29,7 +29,7 @@ class BridgeRules(unittest.TestCase):
 ''' + constants + '\n' + lot_rule + '\n' + target_rule + '\n' + loss_rule + '''
 struct Trade {
   bool Buy(double lot,const char*,double,double sl,double tp,const char*) {
-    assert(lot>=0.01 && lot<=0.03); assert(sl==0); assert(tp==0); return true;
+    assert(lot>=0.01 && lot<=0.05); assert(sl==0); assert(tp==0); return true;
   }
   bool Sell(double lot,const char* s,double p,double sl,double tp,const char* c) {
     return Buy(lot,s,p,sl,tp,c);
@@ -76,4 +76,10 @@ def test_gold_spread_limit_in_price_not_points():
 
 def test_v9_max_profit_and_hedge():
     s = SOURCE.read_text()
-    assert 'MAX_PROFIT_USD = 9.00' in s and 'MaxProfitHit(net)' in s and 'AllowHedge' in s
+    assert 'MAX_PROFIT_USD = 9.00' in s and 'MaxProfitHit(net, plot)' in s and 'AllowHedge' in s
+
+def test_v12_pending_orders_and_lot_scaling():
+    s = SOURCE.read_text()
+    for t in ['ORDER_TYPE_BUY_LIMIT','ORDER_TYPE_SELL_LIMIT','ORDER_TYPE_BUY_STOP,','ORDER_TYPE_SELL_STOP,','ORDER_TYPE_BUY_STOP_LIMIT','ORDER_TYPE_SELL_STOP_LIMIT']:
+        assert t in s
+    assert 'BalancePerStep = 500' in s and 'MaxLotPerStep = 0.05' in s and 'MaxProfitFor(' in s

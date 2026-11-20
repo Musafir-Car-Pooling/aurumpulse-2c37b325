@@ -92,6 +92,13 @@
       "when": 1795186480182,
       "tag": "0012_auto_orders_lot_from_signal",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795187490911,
+      "tag": "0013_auto_orders_allow_005_lot",
+      "breakpoints": true
     }
   ]
 }
