@@ -18,7 +18,7 @@ export function TakeEntry({ market, direction }: { market: Market; direction: "B
   const doRefresh = async () => {
     setRBusy(true); setRMsg("");
     try { const r = await refresh(); setAutoOn(true);
-      setRMsg(!r.online ? "MT5 bot offline — MT5 aur EA v12 check karein." : r.queued ? `Gold ${r.direction} auto entry MT5 ko bhej di.` : r.waiting ? "Pichli entry abhi MT5 par process ho rahi hai." : `Gold signal ${r.direction} — BUY/SELL aate hi auto entry hogi.`); }
+      setRMsg(!r.online ? "MT5 bot offline — MT5 aur EA v13 check karein." : r.queued ? `Gold ${r.direction} auto entry MT5 ko bhej di.` : r.waiting ? "Pichli entry abhi MT5 par process ho rahi hai." : `Gold signal ${r.direction} — BUY/SELL aate hi auto entry hogi.`); }
     catch { setRMsg("Refresh nahi ho saka. Dobara try karein."); } finally { setRBusy(false); }
   };
   const [linked, setLinked] = useState<boolean | null>(null), [auto, setAutoOn] = useState(false);
@@ -55,7 +55,7 @@ export function TakeEntry({ market, direction }: { market: Market; direction: "B
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogContent className="border-gold/30">
         <AlertDialogHeader><AlertDialogTitle className="font-display text-3xl">{direction} {market}?</AlertDialogTitle>
-          <AlertDialogDescription>Your connected MT5 bot will place this trade at market price with no SL/TP. Lot grows with signal strength and balance (max 0.05 per USD 500). Strong signals hold up to USD 9 per 0.01 lot. The bot closes at USD 2+ profit (holds up to USD 9 while the signal stays strong) or at the USD 3 loss limit. Real money is at risk.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogDescription>Your connected MT5 bot will place this trade at market price with no SL/TP. Lot grows with signal strength and balance (max 0.05 per USD 500). Strong signals hold up to USD 9 per 0.01 lot. The bot closes at USD 2+ profit (holds up to USD 9 while the signal stays strong) or at the loss limit (USD 3 per 0.01 lot). Real money is at risk.</AlertDialogDescription></AlertDialogHeader>
         <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="btn-gold" onClick={() => void send()}>Yes, take entry</AlertDialogAction></AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -11,8 +11,8 @@ describe("MT5 take entry rules", () => {
     expect(pollLine(o, true)).toBe("x|XAUUSD|BUY|0.02|2300.5|2310|2320");
     expect(pollLine(o, false).split("|")).toHaveLength(4);
   });
-  it("orders older than 2 minutes are stale", () => {
-    expect(isStale("2026-11-07T09:57:59Z", now)).toBe(true);
+  it("orders older than 3 minutes are stale", () => {
+    expect(isStale("2026-11-07T09:56:59Z", now)).toBe(true);
     expect(isStale("2026-11-07T09:59:00Z", now)).toBe(false);
   });
 });

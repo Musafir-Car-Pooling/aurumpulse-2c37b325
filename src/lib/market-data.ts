@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { analyze, type Candle, type SignalResult } from "./signal-engine";
+import { analyze, analyzeScalp, type Candle, type SignalResult } from "./signal-engine";
 import { isMarketClosed, MARKETS, type Market } from "./markets";
 export type Scan = { market: Market; result: SignalResult | null; status: "ready" | "closed" | "stale" | "unavailable"; scanned_at: string; error: string | null };
 const chartSchema = z.object({ chart: z.object({ result: z.array(z.object({ timestamp: z.array(z.number()), indicators: z.object({ quote: z.array(z.object({ close: z.array(z.number().nullable()), high: z.array(z.number().nullable()), low: z.array(z.number().nullable()) })) }) })).nullable() }) });
@@ -33,7 +33,11 @@ export async function scanMarket(market: Market): Promise<Scan> {
         }
       } catch { /* Preserve original futures fallback when the spot feed is unavailable. */ }
     }
-    return {...base, result:analyze(market,m15,h1,spot,now),status:"ready",error:null};
+    const result = analyze(market,m15,h1,spot,now);
+    if (market === "XAUUSD") {
+      try { const m5 = await candles(market,"5m","2d"); result.scalp = analyzeScalp(m5,result.direction,now); } catch { result.scalp = null; }
+    }
+    return {...base, result,status:"ready",error:null};
   } catch (error) {
     console.error(`Scan failed for ${market}:`, error);
     return {...base,result:null,status:"unavailable",error:"Couldn't reach this market. Please try again shortly."};

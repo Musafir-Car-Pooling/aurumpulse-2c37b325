@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v12.mq5')
+SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v13.mq5')
 
 
 class BridgeRules(unittest.TestCase):
@@ -18,7 +18,7 @@ class BridgeRules(unittest.TestCase):
         constants = '\n'.join(re.findall(
             r'const double (?:FIXED_LOT|MAX_LOT|PROFIT_TARGET_USD|LOSS_LIMIT_USD) = [^;]+;', source))
         lot_rule = re.search(r'double LotForConfidence\([^\n]+', source).group() + '\n' + re.search(r'bool LotAllowed\([^}]+\}', source).group()
-        target_rule = re.search(r'bool TargetReached\([^}]+\}', source).group()
+        target_rule = re.search(r'double LotSteps\([^}]+\}', source).group() + '\n' + re.search(r'bool TargetReached\([^}]+\}', source).group()
         loss_rule = re.search(r'bool LossHit\([^}]+\}', source).group()
         buy = re.search(r'trade\.Buy\([^;]+?\)', source).group()
         sell = re.search(r'trade\.Sell\([^;]+?\)', source).group()
@@ -26,6 +26,7 @@ class BridgeRules(unittest.TestCase):
 #include <cassert>
 #define MathAbs std::abs
 #define MathRound std::round
+#define MathMax std::fmax
 ''' + constants + '\n' + lot_rule + '\n' + target_rule + '\n' + loss_rule + '''
 struct Trade {
   bool Buy(double lot,const char*,double,double sl,double tp,const char*) {
@@ -45,16 +46,17 @@ int main() {
   assert(!LotAllowed(0.01,0.01,100,0.02));
   assert(!LotAllowed(0.01,0.01,100,0));
   assert(LotForConfidence(70)==0.01); assert(LotForConfidence(75)==0.02); assert(LotForConfidence(85)==0.03);
-  assert(!TargetReached(-10));
-  assert(!TargetReached(1.99));
-  assert(TargetReached(2.00));
-  assert(TargetReached(2.01)); assert(!TargetReached(1.00));
+  assert(!TargetReached(-10,0.01));
+  assert(!TargetReached(1.99,0.01));
+  assert(TargetReached(2.00,0.01));
+  assert(TargetReached(2.01,0.01)); assert(!TargetReached(1.00,0.01));
   assert(LOSS_LIMIT_USD == 3.00);
-  assert(LossHit(-3.00));
-  assert(LossHit(-3.01));
-  assert(LossHit(-10));
-  assert(!LossHit(-2.99));
-  assert(!LossHit(0));
+  assert(LossHit(-3.00,0.01));
+  assert(LossHit(-3.01,0.01));
+  assert(LossHit(-10,0.01));
+  assert(!LossHit(-2.99,0.01));
+  assert(!LossHit(0,0.01));
+  assert(LossHit(-6,0.02)); assert(!LossHit(-5.9,0.02)); assert(LossHit(-15,0.05)); assert(TargetReached(4,0.02)); assert(!TargetReached(3.9,0.02));
 }
 '''
         with tempfile.TemporaryDirectory() as folder:
@@ -76,7 +78,7 @@ def test_gold_spread_limit_in_price_not_points():
 
 def test_v9_max_profit_and_hedge():
     s = SOURCE.read_text()
-    assert 'MAX_PROFIT_USD = 9.00' in s and 'MaxProfitHit(net, plot)' in s and 'AllowHedge' in s
+    assert 'MAX_PROFIT_USD = 9.00' in s and 'MaxProfitHit(net, plot)' in s and 'LossHit(net, plot)' in s and 'AllowHedge' in s
 
 def test_v12_pending_orders_and_lot_scaling():
     s = SOURCE.read_text()

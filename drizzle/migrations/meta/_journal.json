@@ -99,6 +99,13 @@
       "when": 1795187490911,
       "tag": "0013_auto_orders_allow_005_lot",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795190205789,
+      "tag": "0014_auto_orders_both_sides",
+      "breakpoints": true
     }
   ]
 }

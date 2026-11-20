@@ -3,7 +3,7 @@ import { z } from "zod";
 import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
 import { marketIds } from "@/lib/markets";
 import { scanMarket } from "@/lib/market-data";
-import { canTrade, lotForConfidence } from "@/lib/mt5";
+import { autoEntries, lotForConfidence } from "@/lib/mt5";
 import type { Json } from "@/integrations/supabase/types";
 export const Route = createFileRoute('/api/public/jobs/scan-markets')({
   server:{handlers:{POST:async ({request}) => {
@@ -21,10 +21,12 @@ export const Route = createFileRoute('/api/public/jobs/scan-markets')({
         });
         if(error) throw error;
         const s = scan.result;
-        if (market === 'XAUUSD' && scan.status === 'ready' && canTrade(s) && s) {
-          const {error:qErr} = await supabaseAdmin.rpc('queue_auto_orders',{p_market:market,p_direction:s.direction,
-            p_signal:{lot:lotForConfidence(s.confidence),entry:s.entry,stopLoss:s.stopLoss,tp1:s.tp1,tp2:s.tp2,time:s.time,validUntil:s.validUntil} as unknown as Json});
-          if(qErr) console.error('auto-trade queue failed',market,qErr.message);
+        if (market === 'XAUUSD' && scan.status === 'ready' && s) {
+          for (const e of autoEntries(s)) {
+            const {error:qErr} = await supabaseAdmin.rpc('queue_auto_orders',{p_market:market,p_direction:e.direction,
+              p_signal:{lot:lotForConfidence(e.confidence),kind:e.kind,confidence:e.confidence,entry:s.entry,time:s.time,validUntil:s.validUntil} as unknown as Json});
+            if(qErr) console.error('auto-trade queue failed',market,qErr.message);
+          }
         }
       }));
     }

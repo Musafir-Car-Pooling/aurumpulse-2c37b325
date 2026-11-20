@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { AppMenu } from "@/components/AppMenu";
 import { Switch } from "@/components/ui/switch";
-import { createMt5Key, getMt5Link, listMt5Orders, revokeMt5Key, setAutoTrade } from "@/lib/mt5.functions";
+import { createMt5Key, getBotStatus, getMt5Link, listMt5Orders, revokeMt5Key, setAutoTrade } from "@/lib/mt5.functions";
 
 export const Route = createFileRoute("/mt5")({
   head: () => ({ meta: [
@@ -23,11 +23,12 @@ const ago = (iso: string) => { const s = Math.round((Date.now() - new Date(iso).
 
 function Mt5Page() {
   const { user, ready } = useAuth();
-  const readLink = useServerFn(getMt5Link), create = useServerFn(createMt5Key), revoke = useServerFn(revokeMt5Key), list = useServerFn(listMt5Orders), setAuto = useServerFn(setAutoTrade);
+  const readLink = useServerFn(getMt5Link), create = useServerFn(createMt5Key), revoke = useServerFn(revokeMt5Key), list = useServerFn(listMt5Orders), setAuto = useServerFn(setAutoTrade), readStatus = useServerFn(getBotStatus);
+  const [bot, setBot] = useState<Awaited<ReturnType<typeof getBotStatus>> | null>(null);
   const [link, setLink] = useState<Awaited<ReturnType<typeof getMt5Link>>>(null);
   const [orders, setOrders] = useState<Awaited<ReturnType<typeof listMt5Orders>>>([]);
   const [key, setKey] = useState(""), [msg, setMsg] = useState("");
-  const load = useCallback(async () => { try { const [l, o] = await Promise.all([readLink(), list()]); setLink(l); setOrders(o); } catch { /* signed out */ } }, [readLink, list]);
+  const load = useCallback(async () => { try { const [l, o, b] = await Promise.all([readLink(), list(), readStatus().catch(() => null)]); setLink(l); setOrders(o); setBot(b); } catch { /* signed out */ } }, [readLink, list, readStatus]);
   useEffect(() => { if (!user) return; void load(); const id = setInterval(() => void load(), 5000); return () => clearInterval(id); }, [user, load]);
   const online = !!link?.last_seen && Date.now() - new Date(link.last_seen).getTime() < 30000;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -53,10 +54,18 @@ function Mt5Page() {
             <p className="text-xs text-muted-foreground">{link.auto_trade ? "On — XAUUSD (gold) only: bot enters on the live signal, takes extra and hedge entries on new signals, closes at $2+ (up to $9 if signal strong) or $3 loss. Other pairs: use Take entry now." : "Off — only signals where you tap \"Take entry now\" are traded."}</p></div>
           <Switch aria-label="Auto trade" checked={!!link.auto_trade} onCheckedChange={async on => { try { await setAuto({ data: { on } }); setMsg(on ? "Auto trade is on." : "Auto trade is off."); void load(); } catch { setMsg("Could not change auto trade."); } }} />
         </section>}
+        {bot && <section className="card-glow space-y-2 rounded-xl p-5 text-sm">
+          <p className="font-semibold">Bot status — XAUUSD</p>
+          <p>Trend signal: <span className={bot.trend === "BUY" ? "text-bull" : bot.trend === "SELL" ? "text-bear" : "text-muted-foreground"}>{bot.trend} {bot.trendConf ? `${bot.trendConf}%` : ""}</span></p>
+          <p>Retracement / scalp (5m): <span className={bot.scalp === "BUY" ? "text-bull" : bot.scalp === "SELL" ? "text-bear" : "text-muted-foreground"}>{bot.scalp} {bot.scalpConf ? `${bot.scalpConf}%` : ""}</span>{bot.retracement && <span className="text-gold"> · against trend</span>}</p>
+          {bot.reasons.length > 0 && <p className="text-xs text-muted-foreground">{bot.reasons.slice(0, 6).join(" · ")}</p>}
+          {bot.status !== "ready" && <p className="text-xs text-bear">Market feed: {bot.status} — no auto entries right now.</p>}
+          <div className="space-y-1 pt-1">{bot.orders.length === 0 ? <p className="text-xs text-muted-foreground">No auto entries yet.</p> : bot.orders.map(o => <p key={o.created_at} className="text-xs"><span className={o.direction === "BUY" ? "text-bull" : "text-bear"}>{o.direction}</span> {o.lot} · {o.status}{o.error ? ` — wajah: ${o.error}` : ""} · {ago(o.created_at)}</p>)}</div>
+        </section>}
         <section className="rounded-xl border border-border bg-card p-5 text-sm leading-relaxed">
           <p className="font-semibold">Setup (one time)</p>
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted-foreground">
-            <li>Download the <span className="text-foreground">AurumPulse Bridge EA v12</span> from your files and copy it into MT5 → File → Open Data Folder → MQL5/Experts.</li>
+            <li>Download the <span className="text-foreground">AurumPulse Bridge EA v13</span> from your files and copy it into MT5 → File → Open Data Folder → MQL5/Experts.</li>
             <li>MT5 → Tools → Options → Expert Advisors → tick "Allow WebRequest" and add: <code className="break-all text-gold">{origin}</code></li>
             <li>Attach the EA to any chart, paste your connect key and this address into its settings, and enable Algo Trading.</li>
           </ol>

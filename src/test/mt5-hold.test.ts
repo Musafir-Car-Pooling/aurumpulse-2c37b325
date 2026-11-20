@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { holdDecision, lotForConfidence, maxProfitFor, scaledLot, signalLine } from "@/lib/mt5";
+import { autoEntries, holdDecision, lossLimitFor, lotForConfidence, profitTargetFor, maxProfitFor, scaledLot, signalLine } from "@/lib/mt5";
 
 const strong = { direction: "BUY", confidence: 80, trend1h: "bull" as const, fresh: true };
 const weak = { ...strong, confidence: 50 };
@@ -14,7 +14,7 @@ describe("Bridge v9 exits", () => {
     expect(holdDecision("BUY", "XAUUSD", -2.99, 0, null)).toBe("WAIT_TARGET");
   });
   it("signal line format", () => expect(signalLine({ direction: "SELL", confidence: 77, validUntil: "2026-01-01T01:00:00Z", indicators: [{ name: "EMA 50/200 (1h)", bias: "bear" }] }, Date.parse("2026-01-01T00:00:00Z"))).toBe("SELL|77|bear|1"));
-  it("v2 signal line adds support and resistance", () => expect(signalLine({ direction: "BUY", confidence: 80, support: 10, resistance: 20, validUntil: "2026-01-01T01:00:00Z" }, Date.parse("2026-01-01T00:00:00Z"), true)).toBe("BUY|80|neutral|1|10|20"));
+  it("v2 signal line adds support and resistance", () => expect(signalLine({ direction: "BUY", confidence: 80, support: 10, resistance: 20, validUntil: "2026-01-01T01:00:00Z" }, Date.parse("2026-01-01T00:00:00Z"), true)).toBe("BUY|80|neutral|1|10|20|WAIT|0"));
   it("lot grows with signal strength", () => {
     expect(lotForConfidence(70)).toBe(0.01);
     expect(lotForConfidence(75)).toBe(0.02);
@@ -31,5 +31,17 @@ describe("Bridge v9 exits", () => {
     expect(maxProfitFor(0.01)).toBe(9); expect(maxProfitFor(0.02)).toBe(18); expect(maxProfitFor(0.05)).toBe(45);
     expect(holdDecision("BUY", "XAUUSD", 17, 17, strong, 0.02)).toBe("HOLD");
     expect(holdDecision("BUY", "XAUUSD", 18, 18, strong, 0.02)).toBe("CLOSE");
+  });
+  it("loss limit and min profit scale with lot", () => {
+    expect(lossLimitFor(0.01)).toBe(3); expect(lossLimitFor(0.02)).toBe(6); expect(lossLimitFor(0.05)).toBe(15);
+    expect(profitTargetFor(0.02)).toBe(4);
+    expect(holdDecision("BUY", "XAUUSD", -5, 0, null, 0.02)).toBe("WAIT_TARGET");
+    expect(holdDecision("BUY", "XAUUSD", -6, 0, null, 0.02)).toBe("CLOSE");
+  });
+  it("queues a retracement BUY inside a SELL trend", () => {
+    const until = new Date(Date.now() + 60000).toISOString();
+    expect(autoEntries({ direction: "SELL", confidence: 73, validUntil: until, scalp: { direction: "BUY", confidence: 78 } }).map(e => `${e.direction}:${e.kind}`)).toEqual(["SELL:trend", "BUY:scalp"]);
+    expect(autoEntries({ direction: "WAIT", confidence: 55, validUntil: until, scalp: { direction: "BUY", confidence: 70 } }).map(e => e.direction)).toEqual(["BUY"]);
+    expect(autoEntries({ direction: "SELL", confidence: 73, validUntil: until, scalp: { direction: "SELL", confidence: 70 } })).toHaveLength(1);
   });
 });

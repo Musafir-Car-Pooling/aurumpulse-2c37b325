@@ -6,7 +6,9 @@ export type SignalResult = {
   confidence: number; entry: number; stopLoss: number; tp1: number; tp2: number; validUntil: string;
   indicators: { name: string; value: string; bias: "bull" | "bear" | "neutral" }[];
   summary: string; support: number; resistance: number;
+  scalp?: ScalpResult | null;
 };
+export type ScalpResult = { direction: "BUY" | "SELL" | "WAIT"; confidence: number; retracement: boolean; reasons: string[] };
 const ema = (values: number[], period: number) => {
   const k = 2 / (period + 1), out: number[] = [];
   values.forEach((v, i) => out.push(i === 0 ? v : v * k + (out[i - 1] ?? v) * (1 - k)));
@@ -95,4 +97,63 @@ export function candlePattern(bars: Candle[]): { name: string; score: number } {
     return { name: "Doji (indecision)", score: 0 };
   }
   return { name: "None", score: 0 };
+}
+
+/** Break of Structure: close beyond the prior 10-bar extreme. CHoCH when it is against the higher-timeframe trend. */
+export function structureBreak(bars: Candle[], lookback = 10): 1 | -1 | 0 {
+  const b = bars.at(-1), prior = bars.slice(-lookback - 1, -1);
+  if (!b || prior.length < lookback) return 0;
+  if (b.c > Math.max(...prior.map(x => x.h))) return 1;
+  if (b.c < Math.min(...prior.map(x => x.l))) return -1;
+  return 0;
+}
+/** Fair Value Gap: 3-candle imbalance (bar[-3] high below bar[-1] low = bullish). */
+export function fairValueGap(bars: Candle[]): 1 | -1 | 0 {
+  const a = bars.at(-3), c = bars.at(-1);
+  if (!a || !c) return 0;
+  return a.h < c.l ? 1 : a.l > c.h ? -1 : 0;
+}
+/** Order block: price returns into the last opposite candle before a strong (2x average range) move. */
+export function orderBlock(bars: Candle[], lookback = 20): 1 | -1 | 0 {
+  const last = bars.at(-1); if (!last || bars.length < lookback + 2) return 0;
+  const seg = bars.slice(-lookback - 1, -1), avg = seg.reduce((a, x) => a + (x.h - x.l), 0) / seg.length;
+  for (let i = seg.length - 1; i >= 1; i--) {
+    const cur = seg[i]!, prev = seg[i - 1]!, move = cur.c - prev.c;
+    if (Math.abs(move) < avg * 2) continue;
+    const ob = prev; // candle before the displacement
+    if (move > 0 && last.l <= ob.h && last.c >= ob.l) return 1;
+    if (move < 0 && last.h >= ob.l && last.c <= ob.h) return -1;
+    return 0;
+  }
+  return 0;
+}
+/** London (07-11 UTC) and New York (12-17 UTC) are active; Asia is quiet. */
+export const sessionActive = (d: Date) => { const h = d.getUTCHours(); return h >= 7 && h < 17; };
+/** 5-minute retracement / scalp engine with smart-money confirmations. Can BUY inside a downtrend (and SELL inside an uptrend). */
+export function analyzeScalp(m5: Candle[], trend: "BUY" | "SELL" | "WAIT", now: Date): ScalpResult {
+  if (m5.length < 50) return { direction: "WAIT", confidence: 50, retracement: false, reasons: ["Not enough 5m data"] };
+  const c = m5.map(x => x.c), reasons: string[] = [];
+  let score = 0;
+  const add = (cond: boolean, s: number, why: string) => { if (cond) { score += s; reasons.push(why); } };
+  const e9 = ema(c, 9), e21 = ema(c, 21);
+  add(last(e9) > last(e21), 2, "5m EMA9 above EMA21"); add(last(e9) < last(e21), -2, "5m EMA9 below EMA21");
+  add(last(e9) > last(e21) && last(e9, 3) <= last(e21, 3), 1, "Fresh bullish cross"); add(last(e9) < last(e21) && last(e9, 3) >= last(e21, 3), -1, "Fresh bearish cross");
+  const r = rsi(c), rPrev = rsi(c.slice(0, -3));
+  add(r > 40 && r < 70 && r > rPrev, 1, `RSI rising ${r.toFixed(0)}`); add(r < 60 && r > 30 && r < rPrev, -1, `RSI falling ${r.toFixed(0)}`);
+  const slow = ema(c, 26), macd = ema(c, 12).map((v, i) => v - (slow[i] ?? v)), sg = ema(macd, 9);
+  const h0 = last(macd) - last(sg), h1 = last(macd, 2) - last(sg, 2);
+  add(h0 > h1, 1, "MACD turning up"); add(h0 < h1, -1, "MACD turning down");
+  const pat = candlePattern(m5); add(pat.score !== 0, pat.score, pat.name);
+  const bos = structureBreak(m5); add(bos === 1, trend === "SELL" ? 2 : 2, trend === "SELL" ? "CHoCH up (bullish)" : "Break of structure up"); add(bos === -1, -2, trend === "BUY" ? "CHoCH down (bearish)" : "Break of structure down");
+  const fvg = fairValueGap(m5); add(fvg === 1, 1, "Bullish fair value gap"); add(fvg === -1, -1, "Bearish fair value gap");
+  const ob = orderBlock(m5); add(ob === 1, 2, "Bullish order block retest"); add(ob === -1, -2, "Bearish order block retest");
+  const seg = m5.slice(-48), hi = Math.max(...seg.map(x => x.h)), lo = Math.min(...seg.map(x => x.l)), mid = (hi + lo) / 2, px = last(c);
+  add(px < mid, 1, "Discount zone (below 50%)"); add(px > mid, -1, "Premium zone (above 50%)");
+  const vwap = seg.reduce((a, x) => a + (x.h + x.l + x.c) / 3, 0) / seg.length;
+  add(px > vwap, 1, "Above session VWAP"); add(px < vwap, -1, "Below session VWAP");
+  const active = sessionActive(now);
+  const direction = score >= 5 ? "BUY" : score <= -5 ? "SELL" : "WAIT";
+  const confidence = Math.max(50, Math.min(95, Math.round(50 + Math.abs(score) / 12 * 45 + (active ? 5 : -5))));
+  reasons.push(active ? "London/New York session" : "Asian session (lower confidence)");
+  return { direction, confidence: direction === "WAIT" ? Math.min(confidence, 55) : confidence, retracement: direction !== "WAIT" && trend !== "WAIT" && direction !== trend, reasons };
 }
