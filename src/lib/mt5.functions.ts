@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { scanMarket } from "./market-data";
 import type { Json } from "@/integrations/supabase/types";
-import { canTrade, hashKey, newKey } from "./mt5";
+import { canTrade, hashKey, lotForConfidence, newKey } from "./mt5";
 
 const marketEnum = z.enum(["XAUUSD", "USTECm", "USTEC_x100m", "EURUSD", "GBPUSD", "USDJPY"]);
 
@@ -54,7 +54,7 @@ export const placeMt5Order = createServerFn({ method: "POST" })
     if (!s || !canTrade(s)) throw new Error("NO_LIVE_SIGNAL");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error } = await supabaseAdmin.from("trade_orders").insert({
-      user_id: context.userId, market: data.market, direction: s.direction, lot: 0.01,
+      user_id: context.userId, market: data.market, direction: s.direction, lot: lotForConfidence(s.confidence),
       signal: { entry: s.entry, stopLoss: s.stopLoss, tp1: s.tp1, tp2: s.tp2, time: s.time, validUntil: s.validUntil },
     }).select("id,direction").single();
     if (error || !row) throw new Error("Could not send order");
@@ -84,7 +84,7 @@ export const refreshAutoTrade = createServerFn({ method: "POST" })
     if (!s || scan.status !== "ready" || !canTrade(s)) return { queued: false, direction: s?.direction ?? "WAIT", online };
     const { data: open } = await supabaseAdmin.from("trade_orders").select("id").eq("user_id", context.userId).eq("market", "XAUUSD").in("status", ["pending", "sent"]).limit(1);
     if (open?.length) return { queued: false, direction: s.direction, online, waiting: true };
-    const { error } = await supabaseAdmin.from("trade_orders").insert({ user_id: context.userId, market: "XAUUSD", direction: s.direction, lot: 0.01, source: "auto",
+    const { error } = await supabaseAdmin.from("trade_orders").insert({ user_id: context.userId, market: "XAUUSD", direction: s.direction, lot: lotForConfidence(s.confidence), source: "auto",
       signal: { entry: s.entry, stopLoss: s.stopLoss, tp1: s.tp1, tp2: s.tp2, time: s.time, validUntil: s.validUntil } });
     if (error) throw new Error("Could not queue");
     return { queued: true, direction: s.direction, online };

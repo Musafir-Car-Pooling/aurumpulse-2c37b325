@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v10.mq5')
+SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v11.mq5')
 
 
 class BridgeRules(unittest.TestCase):

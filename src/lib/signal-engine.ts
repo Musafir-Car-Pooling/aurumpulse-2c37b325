@@ -61,13 +61,38 @@ export function analyze(market: Market, m15: Candle[], h1: Candle[], spot: numbe
   // Liquidity sweep / manipulation: wick through the prior 20-bar extreme, then close back inside (stop hunt).
   const prev = m15.slice(-21, -1), lastBar = m15.at(-1);
   const pLo = Math.min(...prev.map(x => x.l)), pHi = Math.max(...prev.map(x => x.h));
-  const bullSweep = !!lastBar && lastBar.l < pLo && lastBar.c > pLo, bearSweep = !!lastBar && lastBar.h > pHi && lastBar.c < pHi;
+  const pc = m15.at(-2)?.c ?? 0;
+  const bullSweep = !!lastBar && lastBar.l < pLo && lastBar.c > pLo && lastBar.c > pc, bearSweep = !!lastBar && lastBar.h > pHi && lastBar.c < pHi && lastBar.c < pc;
   add("Liquidity sweep", bullSweep ? "Sell-side liquidity taken" : bearSweep ? "Buy-side liquidity taken" : "None", bullSweep ? 2 : bearSweep ? -2 : 0);
+  // Candlestick patterns on the last closed 15m bars.
+  const pat = candlePattern(m15);
+  add("Candle pattern (15m)", pat.name, pat.score);
+  // Retracement trade: counter-trend BUY in a downtrend (or SELL in an uptrend) when price is stretched into support/resistance with a reversal candle.
+  const pullBuy = !up && r15 < 38 && nearSup && pat.score > 0, pullSell = up && r15 > 62 && nearRes && pat.score < 0;
+  add("Retracement setup", pullBuy ? "Oversold bounce at support" : pullSell ? "Overbought rejection at resistance" : "None", pullBuy ? 4 : pullSell ? -4 : 0);
   // Sideways markets need a stronger score before giving BUY/SELL.
   if (regime === "Sideways") score = Math.trunc(score * 0.75);
   const direction = directionForScore(score), d = direction === "SELL" ? -1 : 1;
   const round = (n: number) => Number(n.toFixed(MARKETS[market].decimals));
-  const confidence = Math.min(95, Math.round(50 + Math.abs(score) / 15 * 45));
-  const summary = direction === "WAIT" ? `Mixed signals (score ${score}). ${MARKETS[market].name} is ranging between ${price(market, support)} and ${price(market, resistance)}. Wait for a break before entering.` : `${direction === "BUY" ? "Bullish" : "Bearish"} momentum (score ${score > 0 ? "+" : ""}${score}/15). Hourly trend is ${e50h > e200h ? "up" : "down"}, RSI ${r15.toFixed(0)}, MACD ${hist > 0 ? "positive" : "negative"}. Expected volatility ${price(market, atr)} per 15 min.`;
+  const confidence = Math.min(95, Math.round(50 + Math.abs(score) / 12 * 45));
+  const summary = direction === "WAIT" ? `Mixed signals (score ${score}). ${MARKETS[market].name} is ranging between ${price(market, support)} and ${price(market, resistance)}. Wait for a break before entering.` : `${direction === "BUY" ? "Bullish" : "Bearish"} momentum (score ${score > 0 ? "+" : ""}${score}/12). Hourly trend is ${e50h > e200h ? "up" : "down"}, RSI ${r15.toFixed(0)}, MACD ${hist > 0 ? "positive" : "negative"}. Expected volatility ${price(market, atr)} per 15 min.`;
   return { market, time: now.toISOString(), dataTime: new Date((m15.at(-1)?.time ?? 0) * 1000).toISOString(), spot: round(spot), direction, confidence: direction === "WAIT" ? Math.min(confidence,55) : confidence, entry: round(spot), stopLoss: round(spot - d * atr * 1.5), tp1: round(spot + d * atr * 1.5), tp2: round(spot + d * atr * 3), validUntil: new Date(now.getTime() + 3600000).toISOString(), indicators, summary, support: round(support), resistance: round(resistance) };
+}
+/** Detects doji, hammer, shooting star, engulfing and morning/evening-star style reversals. Positive = bullish. */
+export function candlePattern(bars: Candle[]): { name: string; score: number } {
+  const b = bars.at(-1), p = bars.at(-2);
+  if (!b || !p) return { name: "None", score: 0 };
+  const o = p.c, body = Math.abs(b.c - o), range = b.h - b.l || 1e-9;
+  const upper = b.h - Math.max(b.c, o), lower = Math.min(b.c, o) - b.l;
+  const po = bars.at(-3)?.c ?? p.c, pBody = p.c - po;
+  if (b.c > o && pBody < 0 && b.c > po && body > Math.abs(pBody)) return { name: "Bullish engulfing", score: 2 };
+  if (b.c < o && pBody > 0 && b.c < po && body > Math.abs(pBody)) return { name: "Bearish engulfing", score: -2 };
+  if (lower >= body * 2 && upper <= range * 0.25 && body > 0) return { name: "Hammer", score: 2 };
+  if (upper >= body * 2 && lower <= range * 0.25 && body > 0) return { name: "Shooting star", score: -2 };
+  if (body <= range * 0.1) {
+    if (lower > range * 0.6) return { name: "Dragonfly doji", score: 1 };
+    if (upper > range * 0.6) return { name: "Gravestone doji", score: -1 };
+    return { name: "Doji (indecision)", score: 0 };
+  }
+  return { name: "None", score: 0 };
 }
