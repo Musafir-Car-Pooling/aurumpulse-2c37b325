@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { holdDecision, signalLine } from "@/lib/mt5";
+import { holdDecision, lotForConfidence, signalLine } from "@/lib/mt5";
 
 const strong = { direction: "BUY", confidence: 80, trend1h: "bull" as const, fresh: true };
 const weak = { ...strong, confidence: 50 };
@@ -14,4 +14,10 @@ describe("Bridge v9 exits", () => {
     expect(holdDecision("BUY", "XAUUSD", -2.99, 0, null)).toBe("WAIT_TARGET");
   });
   it("signal line format", () => expect(signalLine({ direction: "SELL", confidence: 77, validUntil: "2026-01-01T01:00:00Z", indicators: [{ name: "EMA 50/200 (1h)", bias: "bear" }] }, Date.parse("2026-01-01T00:00:00Z"))).toBe("SELL|77|bear|1"));
+  it("v2 signal line adds support and resistance", () => expect(signalLine({ direction: "BUY", confidence: 80, support: 10, resistance: 20, validUntil: "2026-01-01T01:00:00Z" }, Date.parse("2026-01-01T00:00:00Z"), true)).toBe("BUY|80|neutral|1|10|20"));
+  it("lot grows with signal strength", () => {
+    expect(lotForConfidence(70)).toBe(0.01);
+    expect(lotForConfidence(75)).toBe(0.02);
+    expect(lotForConfidence(85)).toBe(0.03);
+  });
 });

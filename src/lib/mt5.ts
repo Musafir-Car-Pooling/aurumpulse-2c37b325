@@ -44,10 +44,15 @@ export function holdDecision(side: "BUY" | "SELL", market: string, profit: numbe
   return "HOLD";
 }
 
-type ScanResult = { direction?: string; confidence?: number; validUntil?: string; indicators?: { name: string; bias: string }[] } | null;
-export function signalLine(r: ScanResult, now = Date.now()) {
+type ScanResult = { direction?: string; support?: number; resistance?: number; confidence?: number; validUntil?: string; indicators?: { name: string; bias: string }[] } | null;
+/** Bridge v10 lot sizing from signal strength. */
+export function lotForConfidence(confidence: number) {
+  return confidence >= 85 ? 0.03 : confidence >= 75 ? 0.02 : 0.01;
+}
+export function signalLine(r: ScanResult, now = Date.now(), v2 = false) {
   if (!r?.direction) return "NONE";
   const t = r.indicators?.find(i => i.name.startsWith("EMA 50/200"))?.bias ?? "neutral";
   const fresh = !!r.validUntil && new Date(r.validUntil).getTime() > now ? 1 : 0;
-  return `${r.direction}|${r.confidence ?? 0}|${t}|${fresh}`;
+  const line = `${r.direction}|${r.confidence ?? 0}|${t}|${fresh}`;
+  return v2 ? `${line}|${r.support ?? 0}|${r.resistance ?? 0}` : line;
 }

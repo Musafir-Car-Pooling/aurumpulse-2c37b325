@@ -18,7 +18,7 @@ export function TakeEntry({ market, direction }: { market: Market; direction: "B
   const doRefresh = async () => {
     setRBusy(true); setRMsg("");
     try { const r = await refresh(); setAutoOn(true);
-      setRMsg(!r.online ? "MT5 bot offline — MT5 aur EA v9 check karein." : r.queued ? `Gold ${r.direction} auto entry MT5 ko bhej di.` : r.waiting ? "Pichli entry abhi MT5 par process ho rahi hai." : `Gold signal ${r.direction} — BUY/SELL aate hi auto entry hogi.`); }
+      setRMsg(!r.online ? "MT5 bot offline — MT5 aur EA v10 check karein." : r.queued ? `Gold ${r.direction} auto entry MT5 ko bhej di.` : r.waiting ? "Pichli entry abhi MT5 par process ho rahi hai." : `Gold signal ${r.direction} — BUY/SELL aate hi auto entry hogi.`); }
     catch { setRMsg("Refresh nahi ho saka. Dobara try karein."); } finally { setRBusy(false); }
   };
   const [linked, setLinked] = useState<boolean | null>(null), [auto, setAutoOn] = useState(false);

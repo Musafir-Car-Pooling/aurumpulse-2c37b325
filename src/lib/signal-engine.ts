@@ -46,9 +46,28 @@ export function analyze(market: Market, m15: Candle[], h1: Candle[], spot: numbe
   add("RSI 14 (15m)", r15.toFixed(1), rs(r15)); add("RSI 14 (1h)", r1h.toFixed(1), rs(r1h));
   add("MACD hist (15m)", `${hist.toFixed(MARKETS[market].decimals)} ${hist > prevHist ? "rising" : "falling"}`, (hist > 0 ? 1 : -1) + (hist > prevHist ? 1 : -1));
   add("ATR 14 (15m)", price(market, atr), 0);
+  // Market structure: trending vs sideways (EMA21 slope over 8 bars compared with ATR).
+  const e21s = ema(c15, 21), slope = last(e21s) - last(e21s, 9);
+  const regime = Math.abs(slope) < atr * 0.5 ? "Sideways" : slope > 0 ? "Uptrend" : "Downtrend";
+  add("Market structure (15m)", regime, regime === "Uptrend" ? 1 : regime === "Downtrend" ? -1 : 0);
+  // Support / resistance: avoid buying into resistance or selling into support.
+  const sp = spot, nearSup = sp - support < atr * 0.6, nearRes = resistance - sp < atr * 0.6;
+  add("Support / resistance", nearSup && !nearRes ? "Near support" : nearRes && !nearSup ? "Near resistance" : "Mid range", nearSup && !nearRes ? 1 : nearRes && !nearSup ? -1 : 0);
+  // Fibonacci retracement of the 32-bar swing: 38.2%-61.8% pullback zone in the trend direction.
+  const hi = resistance, lo = support, range = hi - lo, up = e50h > e200h;
+  const retr = range > 0 ? (up ? (hi - sp) / range : (sp - lo) / range) : 0;
+  const inFib = retr >= 0.382 && retr <= 0.618;
+  add("Fibonacci 38.2-61.8%", `${(retr * 100).toFixed(1)}% pullback`, inFib ? (up ? 1 : -1) : 0);
+  // Liquidity sweep / manipulation: wick through the prior 20-bar extreme, then close back inside (stop hunt).
+  const prev = m15.slice(-21, -1), lastBar = m15.at(-1);
+  const pLo = Math.min(...prev.map(x => x.l)), pHi = Math.max(...prev.map(x => x.h));
+  const bullSweep = !!lastBar && lastBar.l < pLo && lastBar.c > pLo, bearSweep = !!lastBar && lastBar.h > pHi && lastBar.c < pHi;
+  add("Liquidity sweep", bullSweep ? "Sell-side liquidity taken" : bearSweep ? "Buy-side liquidity taken" : "None", bullSweep ? 2 : bearSweep ? -2 : 0);
+  // Sideways markets need a stronger score before giving BUY/SELL.
+  if (regime === "Sideways") score = Math.trunc(score * 0.75);
   const direction = directionForScore(score), d = direction === "SELL" ? -1 : 1;
   const round = (n: number) => Number(n.toFixed(MARKETS[market].decimals));
-  const confidence = Math.round(50 + Math.abs(score) / 10 * 45);
-  const summary = direction === "WAIT" ? `Mixed signals (score ${score}). ${MARKETS[market].name} is ranging between ${price(market, support)} and ${price(market, resistance)}. Wait for a break before entering.` : `${direction === "BUY" ? "Bullish" : "Bearish"} momentum (score ${score > 0 ? "+" : ""}${score}/10). Hourly trend is ${e50h > e200h ? "up" : "down"}, RSI ${r15.toFixed(0)}, MACD ${hist > 0 ? "positive" : "negative"}. Expected volatility ${price(market, atr)} per 15 min.`;
+  const confidence = Math.min(95, Math.round(50 + Math.abs(score) / 15 * 45));
+  const summary = direction === "WAIT" ? `Mixed signals (score ${score}). ${MARKETS[market].name} is ranging between ${price(market, support)} and ${price(market, resistance)}. Wait for a break before entering.` : `${direction === "BUY" ? "Bullish" : "Bearish"} momentum (score ${score > 0 ? "+" : ""}${score}/15). Hourly trend is ${e50h > e200h ? "up" : "down"}, RSI ${r15.toFixed(0)}, MACD ${hist > 0 ? "positive" : "negative"}. Expected volatility ${price(market, atr)} per 15 min.`;
   return { market, time: now.toISOString(), dataTime: new Date((m15.at(-1)?.time ?? 0) * 1000).toISOString(), spot: round(spot), direction, confidence: direction === "WAIT" ? Math.min(confidence,55) : confidence, entry: round(spot), stopLoss: round(spot - d * atr * 1.5), tp1: round(spot + d * atr * 1.5), tp2: round(spot + d * atr * 3), validUntil: new Date(now.getTime() + 3600000).toISOString(), indicators, summary, support: round(support), resistance: round(resistance) };
 }

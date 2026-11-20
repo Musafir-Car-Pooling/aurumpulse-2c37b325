@@ -9,15 +9,15 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v9.mq5')
+SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v10.mq5')
 
 
 class BridgeRules(unittest.TestCase):
     def test_fixed_lot_and_two_usd_exit(self):
         source = SOURCE.read_text()
         constants = '\n'.join(re.findall(
-            r'const double (?:FIXED_LOT|PROFIT_TARGET_USD|LOSS_LIMIT_USD) = [^;]+;', source))
-        lot_rule = re.search(r'bool LotAllowed\([^}]+\}', source).group()
+            r'const double (?:FIXED_LOT|MAX_LOT|PROFIT_TARGET_USD|LOSS_LIMIT_USD) = [^;]+;', source))
+        lot_rule = re.search(r'double LotForConfidence\([^\n]+', source).group() + '\n' + re.search(r'bool LotAllowed\([^}]+\}', source).group()
         target_rule = re.search(r'bool TargetReached\([^}]+\}', source).group()
         loss_rule = re.search(r'bool LossHit\([^}]+\}', source).group()
         buy = re.search(r'trade\.Buy\([^;]+?\)', source).group()
@@ -29,7 +29,7 @@ class BridgeRules(unittest.TestCase):
 ''' + constants + '\n' + lot_rule + '\n' + target_rule + '\n' + loss_rule + '''
 struct Trade {
   bool Buy(double lot,const char*,double,double sl,double tp,const char*) {
-    assert(lot==0.01); assert(sl==0); assert(tp==0); return true;
+    assert(lot>=0.01 && lot<=0.03); assert(sl==0); assert(tp==0); return true;
   }
   bool Sell(double lot,const char* s,double p,double sl,double tp,const char* c) {
     return Buy(lot,s,p,sl,tp,c);
@@ -37,13 +37,14 @@ struct Trade {
 };
 int main() {
   Trade trade;
-  const char* symbol="XAUUSDm"; const char* comment="AP3 test";
+  const char* symbol="XAUUSDm"; const char* comment="AP3 test"; double lot=0.02;
 ''' + buy + ';\n' + sell + ';\n' + '''
   assert(FIXED_LOT == 0.01);
-  assert(LotAllowed(0.01,100,0.01));
-  assert(!LotAllowed(0.1,100,0.1));
-  assert(!LotAllowed(0.01,100,0.02));
-  assert(!LotAllowed(0.01,100,0));
+  assert(LotAllowed(0.01,0.01,100,0.01));
+  assert(!LotAllowed(0.01,0.1,100,0.1));
+  assert(!LotAllowed(0.01,0.01,100,0.02));
+  assert(!LotAllowed(0.01,0.01,100,0));
+  assert(LotForConfidence(70)==0.01); assert(LotForConfidence(75)==0.02); assert(LotForConfidence(85)==0.03);
   assert(!TargetReached(-10));
   assert(!TargetReached(1.99));
   assert(TargetReached(2.00));
