@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v8.mq5')
+SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v9.mq5')
 
 
 class BridgeRules(unittest.TestCase):
@@ -73,6 +73,6 @@ def test_gold_spread_limit_in_price_not_points():
     s = SOURCE.read_text()
     assert 'MaxGoldSpreadPrice = 1.00' in s and 'SYMBOL_POINT) > MaxGoldSpread' not in s
 
-def test_closes_at_two_usd_without_hold():
+def test_v9_max_profit_and_hedge():
     s = SOURCE.read_text()
-    assert 'else if(TargetReached(net)) decision = 2;' in s and 'HOLD - signal strong' not in s
+    assert 'MAX_PROFIT_USD = 9.00' in s and 'MaxProfitHit(net)' in s and 'AllowHedge' in s

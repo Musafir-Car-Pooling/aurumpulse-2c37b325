@@ -78,6 +78,13 @@
       "when": 1795072350970,
       "tag": "0010_auto_trade_gold_only_continuous",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795184306635,
+      "tag": "0011_auto_orders_ignore_stuck",
+      "breakpoints": true
     }
   ]
 }

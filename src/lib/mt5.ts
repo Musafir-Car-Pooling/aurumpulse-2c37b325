@@ -31,10 +31,17 @@ export function isStale(createdAt: string, now = Date.now()) {
 export const PROFIT_TARGET_USD = 2;
 export const LOSS_LIMIT_USD = 3;
 export type LiveSignal = { direction: string; confidence: number; trend1h: "bull" | "bear" | "neutral"; fresh: boolean };
-/** Quick exit (Bridge v8): closes at -$3 loss or at $2+ profit; never holds a winning trade. */
-export function holdDecision(_side: "BUY" | "SELL", _market: string, profit: number, _peak: number, _sig: LiveSignal | null): "CLOSE" | "WAIT_TARGET" {
-  if (profit <= -LOSS_LIMIT_USD || profit >= PROFIT_TARGET_USD) return "CLOSE";
-  return "WAIT_TARGET";
+export const MAX_PROFIT_USD = 9;
+export const GIVEBACK = 0.4;
+/** Bridge v9: close at -$3; at $2+ hold only while the live signal is strong in the same direction (max $9, 40% giveback guard). */
+export function holdDecision(side: "BUY" | "SELL", market: string, profit: number, peak: number, sig: LiveSignal | null): "CLOSE" | "HOLD" | "WAIT_TARGET" {
+  if (profit <= -LOSS_LIMIT_USD || profit >= MAX_PROFIT_USD) return "CLOSE";
+  if (profit < PROFIT_TARGET_USD) return "WAIT_TARGET";
+  const gold = market === "XAUUSD";
+  const strong = !!sig && sig.fresh && sig.direction === side && sig.confidence >= (gold ? 70 : 60) && (!gold || sig.trend1h === (side === "BUY" ? "bull" : "bear"));
+  if (!strong) return "CLOSE";
+  if (peak > PROFIT_TARGET_USD && profit <= Math.max(PROFIT_TARGET_USD, peak * (1 - GIVEBACK))) return "CLOSE";
+  return "HOLD";
 }
 
 type ScanResult = { direction?: string; confidence?: number; validUntil?: string; indicators?: { name: string; bias: string }[] } | null;

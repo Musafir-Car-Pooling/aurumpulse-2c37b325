@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { scanMarket } from "./market-data";
+import type { Json } from "@/integrations/supabase/types";
 import { canTrade, hashKey, newKey } from "./mt5";
 
 const marketEnum = z.enum(["XAUUSD", "USTECm", "USTEC_x100m", "EURUSD", "GBPUSD", "USDJPY"]);
@@ -65,4 +66,26 @@ export const listMt5Orders = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data } = await context.supabase.from("trade_orders").select("id,market,direction,lot,source,status,ticket,price,error,created_at").eq("user_id", context.userId).order("created_at", { ascending: false }).limit(10);
     return data ?? [];
+  });
+
+/** Refresh button: clears stuck auto orders, rescans gold now and queues an entry if the live signal is tradable. */
+export const refreshAutoTrade = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: link } = await context.supabase.from("mt5_links").select("auto_trade,last_seen").eq("user_id", context.userId).maybeSingle();
+    if (!link) throw new Error("MT5_NOT_CONNECTED");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("trade_orders").update({ status: "expired", error: "Cleared by refresh" }).eq("user_id", context.userId).in("status", ["pending", "sent"]).lt("created_at", new Date(Date.now() - 60000).toISOString());
+    if (!link.auto_trade) await supabaseAdmin.from("mt5_links").update({ auto_trade: true }).eq("user_id", context.userId);
+    const scan = await scanMarket("XAUUSD");
+    await supabaseAdmin.rpc("record_market_scan", { p_market: "XAUUSD", p_result: scan.result as unknown as Json, p_status: scan.status, p_scanned_at: scan.scanned_at, ...(scan.error ? { p_error: scan.error } : {}) });
+    const s = scan.result;
+    const online = !!link.last_seen && Date.now() - new Date(link.last_seen).getTime() < 30000;
+    if (!s || scan.status !== "ready" || !canTrade(s)) return { queued: false, direction: s?.direction ?? "WAIT", online };
+    const { data: open } = await supabaseAdmin.from("trade_orders").select("id").eq("user_id", context.userId).eq("market", "XAUUSD").in("status", ["pending", "sent"]).limit(1);
+    if (open?.length) return { queued: false, direction: s.direction, online, waiting: true };
+    const { error } = await supabaseAdmin.from("trade_orders").insert({ user_id: context.userId, market: "XAUUSD", direction: s.direction, lot: 0.01, source: "auto",
+      signal: { entry: s.entry, stopLoss: s.stopLoss, tp1: s.tp1, tp2: s.tp2, time: s.time, validUntil: s.validUntil } });
+    if (error) throw new Error("Could not queue");
+    return { queued: true, direction: s.direction, online };
   });
