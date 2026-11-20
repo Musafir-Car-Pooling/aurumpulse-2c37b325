@@ -75,3 +75,9 @@ export function autoEntries(r: { direction: string; confidence: number; validUnt
   if (sc && (sc.direction === "BUY" || sc.direction === "SELL") && sc.direction !== r.direction) out.push({ direction: sc.direction, confidence: sc.confidence, kind: "scalp" });
   return out;
 }
+
+/** v14: strength becomes several 0.01 positions instead of one big lot (1/2/3/5 per USD 500, scaled with balance). */
+export function positionsForConfidence(confidence: number, balance = 500) {
+  const base = Math.round(lotForConfidence(confidence) / 0.01);
+  return Math.max(1, Math.floor(base * Math.max(1, balance / 500)));
+}

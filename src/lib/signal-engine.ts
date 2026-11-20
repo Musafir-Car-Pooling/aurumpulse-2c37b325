@@ -7,6 +7,7 @@ export type SignalResult = {
   indicators: { name: string; value: string; bias: "bull" | "bear" | "neutral" }[];
   summary: string; support: number; resistance: number;
   scalp?: ScalpResult | null;
+  fib?: FibSetup | null;
 };
 export type ScalpResult = { direction: "BUY" | "SELL" | "WAIT"; confidence: number; retracement: boolean; reasons: string[] };
 const ema = (values: number[], period: number) => {
@@ -44,8 +45,11 @@ export function analyze(market: Market, m15: Candle[], h1: Candle[], spot: numbe
   add("EMA 9/21 (15m)", e9 > e21 ? "Bullish cross" : "Bearish cross", e9 > e21 ? 2 : -2);
   add("EMA 50/200 (1h)", e50h > e200h ? "Uptrend" : "Downtrend", e50h > e200h ? 2 : -2);
   add("Price vs EMA50 (1h)", futLast > e50h ? "Above" : "Below", futLast > e50h ? 1 : -1);
-  const rs = (v: number) => v > 70 ? -1 : v < 30 ? 1 : v > 55 ? 1 : v < 45 ? -1 : 0;
-  add("RSI 14 (15m)", r15.toFixed(1), rs(r15)); add("RSI 14 (1h)", r1h.toFixed(1), rs(r1h));
+  // RSI with trend-aware bands (uptrend 40-80, downtrend 20-60) and the 50 line for momentum.
+  const upT = e50h > e200h;
+  add("RSI 14 (15m)", `${r15.toFixed(1)} (${upT ? "40-80" : "20-60"} band)`, rsiBias(r15, upT)); add("RSI 14 (1h)", r1h.toFixed(1), rsiBias(r1h, upT));
+  const div = rsiDivergence(c15);
+  add("RSI divergence (15m)", div === 1 ? "Bullish divergence" : div === -1 ? "Bearish divergence" : "None", div * 2);
   add("MACD hist (15m)", `${hist.toFixed(MARKETS[market].decimals)} ${hist > prevHist ? "rising" : "falling"}`, (hist > 0 ? 1 : -1) + (hist > prevHist ? 1 : -1));
   add("ATR 14 (15m)", price(market, atr), 0);
   // Market structure: trending vs sideways (EMA21 slope over 8 bars compared with ATR).
@@ -55,11 +59,9 @@ export function analyze(market: Market, m15: Candle[], h1: Candle[], spot: numbe
   // Support / resistance: avoid buying into resistance or selling into support.
   const sp = spot, nearSup = sp - support < atr * 0.6, nearRes = resistance - sp < atr * 0.6;
   add("Support / resistance", nearSup && !nearRes ? "Near support" : nearRes && !nearSup ? "Near resistance" : "Mid range", nearSup && !nearRes ? 1 : nearRes && !nearSup ? -1 : 0);
-  // Fibonacci retracement of the 32-bar swing: 38.2%-61.8% pullback zone in the trend direction.
-  const hi = resistance, lo = support, range = hi - lo, up = e50h > e200h;
-  const retr = range > 0 ? (up ? (hi - sp) / range : (sp - lo) / range) : 0;
-  const inFib = retr >= 0.382 && retr <= 0.618;
-  add("Fibonacci 38.2-61.8%", `${(retr * 100).toFixed(1)}% pullback`, inFib ? (up ? 1 : -1) : 0);
+  // Fibonacci on the real swing (direction-aware): golden zone 50-61.8% with a reaction, 78.6% break cancels.
+  const fib = fibSetup(m15.slice(-60).map(x => ({ ...x, h: x.h - basis, l: x.l - basis, c: x.c - basis })));
+  if (fib) add("Fibonacci", `${fib.swing === "up" ? "Up" : "Down"}-swing ${(fib.retr * 100).toFixed(1)}% · 61.8 ${price(market, fib.levels.l618)} · ext 161.8 ${price(market, fib.levels.e1618)}`, fib.score);
   // Liquidity sweep / manipulation: wick through the prior 20-bar extreme, then close back inside (stop hunt).
   const prev = m15.slice(-21, -1), lastBar = m15.at(-1);
   const pLo = Math.min(...prev.map(x => x.l)), pHi = Math.max(...prev.map(x => x.h));
@@ -70,6 +72,7 @@ export function analyze(market: Market, m15: Candle[], h1: Candle[], spot: numbe
   const pat = candlePattern(m15);
   add("Candle pattern (15m)", pat.name, pat.score);
   // Retracement trade: counter-trend BUY in a downtrend (or SELL in an uptrend) when price is stretched into support/resistance with a reversal candle.
+  const up = upT;
   const pullBuy = !up && r15 < 38 && nearSup && pat.score > 0, pullSell = up && r15 > 62 && nearRes && pat.score < 0;
   add("Retracement setup", pullBuy ? "Oversold bounce at support" : pullSell ? "Overbought rejection at resistance" : "None", pullBuy ? 4 : pullSell ? -4 : 0);
   // Sideways markets need a stronger score before giving BUY/SELL.
@@ -78,7 +81,8 @@ export function analyze(market: Market, m15: Candle[], h1: Candle[], spot: numbe
   const round = (n: number) => Number(n.toFixed(MARKETS[market].decimals));
   const confidence = Math.min(95, Math.round(50 + Math.abs(score) / 12 * 45));
   const summary = direction === "WAIT" ? `Mixed signals (score ${score}). ${MARKETS[market].name} is ranging between ${price(market, support)} and ${price(market, resistance)}. Wait for a break before entering.` : `${direction === "BUY" ? "Bullish" : "Bearish"} momentum (score ${score > 0 ? "+" : ""}${score}/12). Hourly trend is ${e50h > e200h ? "up" : "down"}, RSI ${r15.toFixed(0)}, MACD ${hist > 0 ? "positive" : "negative"}. Expected volatility ${price(market, atr)} per 15 min.`;
-  return { market, time: now.toISOString(), dataTime: new Date((m15.at(-1)?.time ?? 0) * 1000).toISOString(), spot: round(spot), direction, confidence: direction === "WAIT" ? Math.min(confidence,55) : confidence, entry: round(spot), stopLoss: round(spot - d * atr * 1.5), tp1: round(spot + d * atr * 1.5), tp2: round(spot + d * atr * 3), validUntil: new Date(now.getTime() + 3600000).toISOString(), indicators, summary, support: round(support), resistance: round(resistance) };
+  const result: SignalResult = { market, time: now.toISOString(), dataTime: new Date((m15.at(-1)?.time ?? 0) * 1000).toISOString(), spot: round(spot), direction, confidence: direction === "WAIT" ? Math.min(confidence,55) : confidence, entry: round(spot), stopLoss: round(spot - d * atr * 1.5), tp1: round(spot + d * atr * 1.5), tp2: round(spot + d * atr * 3), validUntil: new Date(now.getTime() + 3600000).toISOString(), indicators, summary, support: round(support), resistance: round(resistance), fib };
+  return result;
 }
 /** Detects doji, hammer, shooting star, engulfing and morning/evening-star style reversals. Positive = bullish. */
 export function candlePattern(bars: Candle[]): { name: string; score: number } {
@@ -143,6 +147,8 @@ export function analyzeScalp(m5: Candle[], trend: "BUY" | "SELL" | "WAIT", now: 
   const slow = ema(c, 26), macd = ema(c, 12).map((v, i) => v - (slow[i] ?? v)), sg = ema(macd, 9);
   const h0 = last(macd) - last(sg), h1 = last(macd, 2) - last(sg, 2);
   add(h0 > h1, 1, "MACD turning up"); add(h0 < h1, -1, "MACD turning down");
+  const dv = rsiDivergence(c); add(dv === 1, 2, "5m bullish RSI divergence"); add(dv === -1, -2, "5m bearish RSI divergence");
+  const sfib = fibSetup(m5.slice(-60)); add(!!sfib && sfib.score > 0, 1, "5m Fibonacci golden zone (buy)"); add(!!sfib && sfib.score < 0, -1, "5m Fibonacci golden zone (sell)");
   const pat = candlePattern(m5); add(pat.score !== 0, pat.score, pat.name);
   const bos = structureBreak(m5); add(bos === 1, trend === "SELL" ? 2 : 2, trend === "SELL" ? "CHoCH up (bullish)" : "Break of structure up"); add(bos === -1, -2, trend === "BUY" ? "CHoCH down (bearish)" : "Break of structure down");
   const fvg = fairValueGap(m5); add(fvg === 1, 1, "Bullish fair value gap"); add(fvg === -1, -1, "Bearish fair value gap");
@@ -156,4 +162,44 @@ export function analyzeScalp(m5: Candle[], trend: "BUY" | "SELL" | "WAIT", now: 
   const confidence = Math.max(50, Math.min(95, Math.round(50 + Math.abs(score) / 12 * 45 + (active ? 5 : -5))));
   reasons.push(active ? "London/New York session" : "Asian session (lower confidence)");
   return { direction, confidence: direction === "WAIT" ? Math.min(confidence, 55) : confidence, retracement: direction !== "WAIT" && trend !== "WAIT" && direction !== trend, reasons };
+}
+
+export const rsiSeries = (values: number[], p = 14) => values.map((_, i) => i < p ? 50 : rsi(values.slice(0, i + 1), p));
+/** Trend-aware RSI: uptrend band 40-80, downtrend band 20-60; 50 line gives momentum. */
+export function rsiBias(v: number, uptrend: boolean): 1 | -1 | 0 {
+  if (uptrend) return v > 80 ? -1 : v < 40 ? 1 : v > 50 ? 1 : 0;
+  return v < 20 ? 1 : v > 60 ? -1 : v < 50 ? -1 : 0;
+}
+/** Regular divergence over the last 30 bars: price lower low + RSI higher low = bullish (and the mirror). */
+export function rsiDivergence(closes: number[], window = 30): 1 | -1 | 0 {
+  if (closes.length < window + 15) return 0;
+  const r = rsiSeries(closes.slice(-(window + 60))).slice(-window), c = closes.slice(-window), half = Math.floor(window / 2);
+  const a = c.slice(0, half), b = c.slice(half), ra = r.slice(0, half), rb = r.slice(half);
+  const iMinA = a.indexOf(Math.min(...a)), iMinB = b.indexOf(Math.min(...b)), iMaxA = a.indexOf(Math.max(...a)), iMaxB = b.indexOf(Math.max(...b));
+  if (b[iMinB]! < a[iMinA]! && rb[iMinB]! > ra[iMinA]! + 1) return 1;
+  if (b[iMaxB]! > a[iMaxA]! && rb[iMaxB]! < ra[iMaxA]! - 1) return -1;
+  return 0;
+}
+export type FibLevels = { l236: number; l382: number; l500: number; l618: number; l786: number; e1272: number; e1618: number };
+export type FibSetup = { swing: "up" | "down"; high: number; low: number; retr: number; levels: FibLevels; score: 1 | -1 | 0 | 2 | -2 };
+/** Fibonacci levels of a swing. For an up-swing retracements are measured down from the high; extensions project above it. */
+export function fibLevels(high: number, low: number, swing: "up" | "down"): FibLevels {
+  const r = high - low, f = (k: number) => swing === "up" ? high - r * k : low + r * k, e = (k: number) => swing === "up" ? low + r * k : high - r * k;
+  return { l236: f(0.236), l382: f(0.382), l500: f(0.5), l618: f(0.618), l786: f(0.786), e1272: e(1.272), e1618: e(1.618) };
+}
+/** Finds the swing (lowest low / highest high) and scores a golden-zone (50-61.8%) reaction in the swing direction. */
+export function fibSetup(bars: Candle[]): FibSetup | null {
+  if (bars.length < 20) return null;
+  let hi = 0, lo = 0;
+  bars.forEach((b, i) => { if (b.h > bars[hi]!.h) hi = i; if (b.l < bars[lo]!.l) lo = i; });
+  const high = bars[hi]!.h, low = bars[lo]!.l, range = high - low, px = bars.at(-1)!.c;
+  if (range <= 0) return null;
+  const swing = lo < hi ? "up" : "down", levels = fibLevels(high, low, swing);
+  const retr = swing === "up" ? (high - px) / range : (px - low) / range;
+  const prev = bars.at(-2)!.c, reacting = swing === "up" ? px > prev : px < prev;
+  let score: FibSetup["score"] = 0;
+  if (retr > 0.786) score = 0; // golden zone failed: setup cancelled
+  else if (retr >= 0.5 && retr <= 0.618) score = reacting ? (swing === "up" ? 2 : -2) : (swing === "up" ? 1 : -1);
+  else if (retr >= 0.382 && retr < 0.5) score = swing === "up" ? 1 : -1;
+  return { swing, high, low, retr, levels, score };
 }

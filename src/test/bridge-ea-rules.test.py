@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v13.mq5')
+SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v14.mq5')
 
 
 class BridgeRules(unittest.TestCase):
@@ -85,3 +85,10 @@ def test_v12_pending_orders_and_lot_scaling():
     for t in ['ORDER_TYPE_BUY_LIMIT','ORDER_TYPE_SELL_LIMIT','ORDER_TYPE_BUY_STOP,','ORDER_TYPE_SELL_STOP,','ORDER_TYPE_BUY_STOP_LIMIT','ORDER_TYPE_SELL_STOP_LIMIT']:
         assert t in s
     assert 'BalancePerStep = 500' in s and 'MaxLotPerStep = 0.05' in s and 'MaxProfitFor(' in s
+
+def test_v14_multi_positions_and_self_learning():
+    s = SOURCE.read_text()
+    assert 'trade.Buy(FIXED_LOT,symbol' in s and 'trade.Sell(FIXED_LOT,symbol' in s
+    assert 'MathRound(lot/FIXED_LOT)' in s
+    assert '"My Requirements.txt"' in s and 'AurumPulse_journal.csv' in s
+    assert 'DailyLossPercent = 5.0' in s and 'MaxConsecutiveLosses = 3' in s and 'w/n < 0.40' in s
