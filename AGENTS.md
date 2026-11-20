@@ -18,3 +18,5 @@
 - Bridge EA revisions consume the existing app order protocol rather than generating local signals; this preserves Auto Trade and manual-entry behavior without changing other users' app settings.
 - Signal reads require a signed-in user with an active trial, premium period or admin role, enforced by database policies and server checks; premium is granted only by the database activation function (admin approval or verified crypto payment callback), never by the browser.
 - Bridge EA v4 reads live per-market signals from the key-authenticated /api/public/mt5/signal endpoint and mirrors holdDecision() in src/lib/mt5.ts; keeps EA exit logic identical to the tested app rule.
+- Keep revised bridge EA source in src/mt5 and test its portable numeric functions directly; deliver a versioned Files copy so source and downloads cannot drift.
+- Scope bridge loss-learning statistics by trading account and market/session/direction/entry trend; record observations as suspected causes and use broker candles only to confirm app signals, never to replace them.

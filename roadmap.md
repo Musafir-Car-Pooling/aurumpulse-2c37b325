@@ -1,5 +1,10 @@
 # Market alerts
 
+## Bridge loss learning revision
+- [x] Replace daily-loss stop and consecutive-loss cooldown with evidence-based entry adjustments and per-loss mistake logging.
+- [x] Deliver bridge v15 and execute its portable loss-learning and exit rules; app MT5 tests pass.
+- [ ] Compile bridge v15 and verify mistake files plus adaptive re-entry on MT5 demo — MetaEditor and a broker terminal are unavailable here.
+
 ## Netlify launch
 - [x] Configure Netlify deployment and document required external settings.
 - [x] Add home-screen installation and browser install prompt (no offline caching).

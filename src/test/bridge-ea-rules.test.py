@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path('/mnt/documents/AurumPulse_Bridge_EA_v14.mq5')
+SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'mt5/AurumPulse_Bridge_EA_v15.mq5'
 
 
 class BridgeRules(unittest.TestCase):
@@ -91,4 +91,4 @@ def test_v14_multi_positions_and_self_learning():
     assert 'trade.Buy(FIXED_LOT,symbol' in s and 'trade.Sell(FIXED_LOT,symbol' in s
     assert 'MathRound(lot/FIXED_LOT)' in s
     assert '"My Requirements.txt"' in s and 'AurumPulse_journal.csv' in s
-    assert 'DailyLossPercent = 5.0' in s and 'MaxConsecutiveLosses = 3' in s and 'w/n < 0.40' in s
+    assert 'UpdatedLossPressure' in s and 'AurumPulse_mistakes.txt' in s and 'w/n<0.40' in s
