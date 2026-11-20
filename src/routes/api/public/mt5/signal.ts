@@ -13,7 +13,7 @@ export const Route = createFileRoute("/api/public/mt5/signal")({
     const { data: link } = await supabaseAdmin.from("mt5_links").select("user_id").eq("key_hash", await hashKey(key)).maybeSingle();
     if (!link) return new Response("Unauthorized", { status: 401 });
     const { data } = await supabaseAdmin.from("market_scans").select("result,status").eq("market", market).maybeSingle();
-    const line = data?.status === "ready" ? signalLine(data.result as Parameters<typeof signalLine>[0], Date.now(), new URL(request.url).searchParams.get("v") === "2") : "NONE";
+    const line = data?.status === "ready" ? signalLine(data.result as Parameters<typeof signalLine>[0], Date.now(), ((v) => v === "3" ? 3 as const : v === "2")(new URL(request.url).searchParams.get("v"))) : "NONE";
     return new Response(line, { headers: { "Content-Type": "text/plain", "Cache-Control": "no-store" } });
   } } },
 });

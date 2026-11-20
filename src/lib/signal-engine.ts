@@ -9,7 +9,9 @@ export type SignalResult = {
   scalp?: ScalpResult | null;
   fib?: FibSetup | null;
 };
-export type ScalpResult = { direction: "BUY" | "SELL" | "WAIT"; confidence: number; retracement: boolean; reasons: string[] };
+export type Session = "asian" | "london" | "overlap" | "ny" | "rollover";
+export type ScalpKind = "pullback" | "resume" | "range" | "momentum";
+export type ScalpResult = { direction: "BUY" | "SELL" | "WAIT"; confidence: number; retracement: boolean; reasons: string[]; kind?: ScalpKind; session?: Session };
 const ema = (values: number[], period: number) => {
   const k = 2 / (period + 1), out: number[] = [];
   values.forEach((v, i) => out.push(i === 0 ? v : v * k + (out[i - 1] ?? v) * (1 - k)));
@@ -141,9 +143,59 @@ export function orderBlock(bars: Candle[], lookback = 20): 1 | -1 | 0 {
 }
 /** London (07-11 UTC) and New York (12-17 UTC) are active; Asia is quiet. */
 export const sessionActive = (d: Date) => { const h = d.getUTCHours(); return h >= 7 && h < 17; };
+/** Session map (UTC): Asian 00-07, London 07-12, London/NY overlap 12-16, NY late 16-21, rollover 21-24. */
+export function sessionOf(d: Date): Session {
+  const h = d.getUTCHours();
+  return h < 7 ? "asian" : h < 12 ? "london" : h < 16 ? "overlap" : h < 21 ? "ny" : "rollover";
+}
+const avgRange = (bars: Candle[], n = 14) => { const seg = bars.slice(-n); return seg.reduce((a, x) => a + (x.h - x.l), 0) / (seg.length || 1); };
+/** Counter-trend pullback: in a SELL trend, price bounced >= 0.5 ATR off the recent 5m low with a bullish trigger near a support/fib/sweep zone (mirror for BUY trend). Trend indicators do not vote. */
+export function detectPullback(m5: Candle[], trend: "BUY" | "SELL" | "WAIT"): { direction: "BUY" | "SELL"; reasons: string[] } | null {
+  if (trend === "WAIT" || m5.length < 30) return null;
+  const up = trend === "SELL", seg = m5.slice(-24), atr = avgRange(m5), px = m5.at(-1)!.c, reasons: string[] = [];
+  const lo = Math.min(...seg.map(x => x.l)), hi = Math.max(...seg.map(x => x.h));
+  const bounce = up ? px - lo : hi - px;
+  if (bounce < 0.5 * atr || bounce > 3 * atr) return null;
+  reasons.push(`${up ? "Bounce" : "Drop"} ${(bounce / atr).toFixed(1)}x ATR from 5m ${up ? "low" : "high"}`);
+  const c = m5.map(x => x.c), r = rsiSeries(c.slice(-40)), pat = candlePattern(m5), bos = structureBreak(m5, 6);
+  const rsiCross = up ? r.slice(-6).some(v => v < 35) && r.at(-1)! > 35 : r.slice(-6).some(v => v > 65) && r.at(-1)! < 65;
+  const trigger = (up ? pat.score > 0 : pat.score < 0) || bos === (up ? 1 : -1) || rsiCross;
+  if (!trigger) return null;
+  reasons.push(rsiCross ? `RSI ${up ? "crossed up 35" : "crossed down 65"}` : bos ? (up ? "5m CHoCH up" : "5m CHoCH down") : pat.name);
+  const big = m5.slice(-60), bHi = Math.max(...big.map(x => x.h)), bLo = Math.min(...big.map(x => x.l)), rng = bHi - bLo || 1e-9;
+  const extreme = up ? (lo - bLo) / rng : (bHi - hi) / rng; // 0 = at the big swing extreme
+  const prior = m5.slice(-30, -6), swept = up ? lo < Math.min(...prior.map(x => x.l)) : hi > Math.max(...prior.map(x => x.h));
+  const zone = extreme <= 0.215 || swept; // within fib 78.6-100% of the 60-bar swing, or a liquidity sweep
+  if (!zone) return null;
+  reasons.push(swept ? (up ? "Liquidity sweep of lows" : "Liquidity sweep of highs") : (up ? "At support / fib 78.6%+" : "At resistance / fib 78.6%+"));
+  return { direction: up ? "BUY" : "SELL", reasons };
+}
+/** Trend resume: after a counter-trend bounce, a rejection at fib 50-61.8% of the last leg or the 5m EMA21 re-enters with the trend. */
+export function detectResume(m5: Candle[], trend: "BUY" | "SELL" | "WAIT"): { direction: "BUY" | "SELL"; reasons: string[] } | null {
+  if (trend === "WAIT" || m5.length < 30) return null;
+  const down = trend === "SELL", seg = m5.slice(-30), px = m5.at(-1)!.c;
+  const hi = Math.max(...seg.map(x => x.h)), lo = Math.min(...seg.map(x => x.l)), rng = hi - lo || 1e-9;
+  const retr = down ? (px - lo) / rng : (hi - px) / rng;
+  const e21 = last(ema(m5.map(x => x.c), 21)), atr = avgRange(m5);
+  const atEma = Math.abs((down ? m5.at(-1)!.h : m5.at(-1)!.l) - e21) <= 0.3 * atr;
+  if (!((retr >= 0.38 && retr <= 0.7) || atEma)) return null;
+  const pat = candlePattern(m5), bos = structureBreak(m5, 6);
+  const reject = down ? pat.score < 0 || bos === -1 : pat.score > 0 || bos === 1;
+  if (!reject) return null;
+  return { direction: down ? "SELL" : "BUY", reasons: [atEma ? "Rejection at 5m EMA21" : `Rejection at fib ${(retr * 100).toFixed(0)}%`, bos ? (down ? "5m CHoCH down" : "5m CHoCH up") : pat.name] };
+}
 /** 5-minute retracement / scalp engine with smart-money confirmations. Can BUY inside a downtrend (and SELL inside an uptrend). */
 export function analyzeScalp(m5: Candle[], trend: "BUY" | "SELL" | "WAIT", now: Date): ScalpResult {
   if (m5.length < 50) return { direction: "WAIT", confidence: 50, retracement: false, reasons: ["Not enough 5m data"] };
+  const session = sessionOf(now);
+  if (session === "rollover") return { direction: "WAIT", confidence: 50, retracement: false, reasons: ["Rollover hours: no new entries (wide spread)"], kind: "range", session };
+  const pb = detectPullback(m5, trend);
+  if (pb && !(session === "ny" && pb.reasons.length < 3)) {
+    const conf = session === "overlap" || session === "london" ? 78 : 72;
+    return { direction: pb.direction, confidence: conf, retracement: true, reasons: [...pb.reasons, `Session: ${session}`], kind: "pullback", session };
+  }
+  const rs = session === "asian" ? null : detectResume(m5, trend);
+  if (rs) return { direction: rs.direction, confidence: session === "overlap" ? 80 : 75, retracement: false, reasons: [...rs.reasons, `Session: ${session}`], kind: "resume", session };
   const c = m5.map(x => x.c), reasons: string[] = [];
   let score = 0;
   const add = (cond: boolean, s: number, why: string) => { if (cond) { score += s; reasons.push(why); } };
@@ -169,7 +221,10 @@ export function analyzeScalp(m5: Candle[], trend: "BUY" | "SELL" | "WAIT", now: 
   const direction = score >= 5 ? "BUY" : score <= -5 ? "SELL" : "WAIT";
   const confidence = Math.max(50, Math.min(95, Math.round(50 + Math.abs(score) / 12 * 45 + (active ? 5 : -5))));
   reasons.push(active ? "London/New York session" : "Asian session (lower confidence)");
-  return { direction, confidence: direction === "WAIT" ? Math.min(confidence, 55) : confidence, retracement: direction !== "WAIT" && trend !== "WAIT" && direction !== trend, reasons };
+  // Asian session: range/mean-reversion only -> fade the premium/discount extreme, ignore breakouts.
+  const kind: ScalpKind = session === "asian" ? "range" : "momentum";
+  const dir = session === "asian" ? (px < lo + (hi - lo) * 0.2 && score > 0 ? "BUY" : px > hi - (hi - lo) * 0.2 && score < 0 ? "SELL" : "WAIT") : direction;
+  return { direction: dir, confidence: dir === "WAIT" ? Math.min(confidence, 55) : confidence, retracement: dir !== "WAIT" && trend !== "WAIT" && dir !== trend, reasons, kind, session };
 }
 
 export const rsiSeries = (values: number[], p = 14) => values.map((_, i) => i < p ? 50 : rsi(values.slice(0, i + 1), p));

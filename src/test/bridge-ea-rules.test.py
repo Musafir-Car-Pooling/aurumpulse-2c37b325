@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'mt5/AurumPulse_Bridge_EA_v16.mq5'
+SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'mt5/AurumPulse_Bridge_EA_v17.mq5'
 
 
 class BridgeRules(unittest.TestCase):
@@ -74,7 +74,7 @@ def test_resolves_any_suffix_symbol():
 
 def test_gold_spread_limit_in_price_not_points():
     s = SOURCE.read_text()
-    assert 'MaxGoldSpreadPrice = 1.00' in s and 'SYMBOL_POINT) > MaxGoldSpread' not in s
+    assert 'MaxGoldSpreadPrice = 0.45' in s and 'SYMBOL_POINT) > MaxGoldSpread' not in s
 
 def test_v9_max_profit_and_hedge():
     s = SOURCE.read_text()
@@ -92,3 +92,7 @@ def test_v14_multi_positions_and_self_learning():
     assert 'MathRound(lot/FIXED_LOT)' in s
     assert '"My Requirements.txt"' in s and 'AurumPulse_journal.csv' in s
     assert 'UpdatedLossPressure' in s and 'AurumPulse_mistakes.txt' in s and 'w/n<0.40' in s
+
+def test_v17_sessions_and_pullback():
+    s = SOURCE.read_text()
+    assert 'signal?v=3' in s and 'sigSession[si]=="rollover"' in s and 'sigKind[si]=="pullback"' in s

@@ -88,7 +88,7 @@ export const refreshAutoTrade = createServerFn({ method: "POST" })
       const { data: open } = await supabaseAdmin.from("trade_orders").select("id").eq("user_id", context.userId).eq("market", "XAUUSD").eq("direction", e.direction).in("status", ["pending", "sent"]).limit(1);
       if (open?.length) continue;
       const { error } = await supabaseAdmin.from("trade_orders").insert({ user_id: context.userId, market: "XAUUSD", direction: e.direction, lot: lotForConfidence(e.confidence), source: "auto",
-        signal: { kind: e.kind, confidence: e.confidence, entry: s.entry, time: s.time, validUntil: s.validUntil } });
+        signal: { kind: e.kind, setup: e.setup ?? null, confidence: e.confidence, entry: s.entry, time: s.time, validUntil: s.validUntil } });
       if (!error) queued++;
     }
     if (!queued) return { queued: false, direction: entries.map(e => e.direction).join("+"), online, waiting: true };
@@ -101,8 +101,8 @@ export const getBotStatus = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: scan } = await supabaseAdmin.from("market_scans").select("result,status,scanned_at").eq("market", "XAUUSD").maybeSingle();
-    const r = (scan?.result ?? null) as { direction?: string; confidence?: number; scalp?: { direction: string; confidence: number; retracement: boolean; reasons: string[] } | null } | null;
+    const r = (scan?.result ?? null) as { direction?: string; confidence?: number; scalp?: { direction: string; confidence: number; retracement: boolean; reasons: string[]; kind?: string; session?: string } | null } | null;
     const { data: orders } = await context.supabase.from("trade_orders").select("direction,lot,status,error,created_at").eq("user_id", context.userId).eq("market", "XAUUSD").eq("source", "auto").order("created_at", { ascending: false }).limit(3);
     return { status: scan?.status ?? "unavailable", scannedAt: scan?.scanned_at ?? null, trend: r?.direction ?? "WAIT", trendConf: r?.confidence ?? 0,
-      scalp: r?.scalp?.direction ?? "WAIT", scalpConf: r?.scalp?.confidence ?? 0, retracement: !!r?.scalp?.retracement, reasons: r?.scalp?.reasons ?? [], orders: orders ?? [] };
+      scalp: r?.scalp?.direction ?? "WAIT", scalpConf: r?.scalp?.confidence ?? 0, retracement: !!r?.scalp?.retracement, reasons: r?.scalp?.reasons ?? [], session: r?.scalp?.session ?? "", setup: r?.scalp?.kind ?? "", orders: orders ?? [] };
   });
