@@ -125,6 +125,8 @@ bool TradingAllowed() {
       && AccountInfoInteger(ACCOUNT_TRADE_EXPERT);
 }
 
+int netFailures = 0;
+
 string Http(string method, string path, string body, int &code) {
    char data[], result[];
    string headers = "x-ap-key: " + ConnectKey + "\r\nContent-Type: application/json\r\n";
@@ -133,15 +135,20 @@ string Http(string method, string path, string body, int &code) {
       int length = StringToCharArray(body, data, 0, WHOLE_ARRAY, CP_UTF8);
       if(length > 0) ArrayResize(data, length-1);
    }
-   ResetLastError();
-   // Bounded network delay; profit exits run before and after polling.
-   code = WebRequest(method, baseUrl+path, headers, 3000, data, result, responseHeaders);
-   if(code == -1) {
+   // Transient terminal errors (e.g. 1003 while the terminal is busy) clear
+   // on retry; only persistent failures reach the status line.
+   for(int attempt=0; attempt<3; attempt++) {
+      ResetLastError();
+      // Bounded network delay; profit exits run before and after polling.
+      code = WebRequest(method, baseUrl+path, headers, 3000, data, result, responseHeaders);
+      if(code != -1) { netFailures=0; return CharArrayToString(result, 0, -1, CP_UTF8); }
       int error = GetLastError();
-      lastStatus = error == 4014 ? "Add app URL to Allow WebRequest" : "Network unavailable: " + IntegerToString(error);
-      return "";
+      if(error == 4014) { lastStatus = "Add app URL to Allow WebRequest"; return ""; }
+      if(attempt < 2) Sleep(300);
    }
-   return CharArrayToString(result, 0, -1, CP_UTF8);
+   netFailures++;
+   if(netFailures >= 3) lastStatus = "Network unavailable - retrying";
+   return "";
 }
 
 string JsonEscape(string value) {
