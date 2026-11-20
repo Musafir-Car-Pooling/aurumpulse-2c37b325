@@ -71,6 +71,14 @@ export function analyze(market: Market, m15: Candle[], h1: Candle[], spot: numbe
   // Candlestick patterns on the last closed 15m bars.
   const pat = candlePattern(m15);
   add("Candle pattern (15m)", pat.name, pat.score);
+  // Ichimoku (1h, 9/26/52): above cloud with Tenkan >= Kijun = bull, below with Tenkan <= Kijun = bear.
+  const ich = ichimoku(h1);
+  if (ich) { const px = futLast, top = Math.max(ich.spanA, ich.spanB), bot = Math.min(ich.spanA, ich.spanB);
+    const s = px > top && ich.tenkan >= ich.kijun ? 2 : px < bot && ich.tenkan <= ich.kijun ? -2 : 0;
+    add("Ichimoku (1h)", s > 0 ? "Above cloud, Tenkan ≥ Kijun" : s < 0 ? "Below cloud, Tenkan ≤ Kijun" : "Inside cloud / mixed", s); }
+  // Mean reversion: 20-bar z-score beyond ±2 favours a move back to the mean.
+  const z = zScore(c15);
+  add("Mean reversion z (15m)", z.toFixed(2), z <= -2 ? 2 : z >= 2 ? -2 : 0);
   // Retracement trade: counter-trend BUY in a downtrend (or SELL in an uptrend) when price is stretched into support/resistance with a reversal candle.
   const up = upT;
   const pullBuy = !up && r15 < 38 && nearSup && pat.score > 0, pullSell = up && r15 > 62 && nearRes && pat.score < 0;
@@ -202,4 +210,19 @@ export function fibSetup(bars: Candle[]): FibSetup | null {
   else if (retr >= 0.5 && retr <= 0.618) score = reacting ? (swing === "up" ? 2 : -2) : (swing === "up" ? 1 : -1);
   else if (retr >= 0.382 && retr < 0.5) score = swing === "up" ? 1 : -1;
   return { swing, high, low, retr, levels, score };
+}
+
+/** Ichimoku lines on the bar 26 periods ago for the cloud (displaced spans) and current Tenkan/Kijun. */
+export function ichimoku(bars: Candle[]) {
+  if (bars.length < 78) return null;
+  const mid = (seg: Candle[]) => (Math.max(...seg.map(x => x.h)) + Math.min(...seg.map(x => x.l))) / 2;
+  const at = (end: number, n: number) => mid(bars.slice(end - n, end));
+  const n = bars.length, d = n - 26;
+  return { tenkan: at(n, 9), kijun: at(n, 26), spanA: (at(d, 9) + at(d, 26)) / 2, spanB: at(d, 52) };
+}
+/** Price distance from its own 20-bar mean in standard deviations. */
+export function zScore(closes: number[], n = 20) {
+  const seg = closes.slice(-n); if (seg.length < n) return 0;
+  const m = seg.reduce((a, b) => a + b, 0) / n, sd = Math.sqrt(seg.reduce((a, b) => a + (b - m) ** 2, 0) / n);
+  return sd === 0 ? 0 : ((seg.at(-1) ?? m) - m) / sd;
 }

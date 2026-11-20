@@ -41,15 +41,19 @@ export const profitTargetFor = (lot: number) => PROFIT_TARGET_USD * lotSteps(lot
 export const maxProfitFor = (lot: number) => MAX_PROFIT_USD * Math.max(1, Math.round(lot / 0.01));
 /** Lot scales with balance: tier lot at USD 500, capped at 0.05 per USD 500. */
 export const scaledLot = (tierLot: number, balance: number) => { const k = Math.max(1, balance / 500); return Math.floor(Math.min(tierLot * k, 0.05 * k) * 100 + 1e-7) / 100; };
+/** v16 trailing: keep 60/70/80% of peak once it reaches 1x/2x/3x the target. */
+export const retainFor = (peak: number, target: number) => peak >= 3 * target ? 0.8 : peak >= 2 * target ? 0.7 : 0.6;
 /** Bridge v9: close at -$3; at $2+ hold only while the live signal is strong in the same direction (max $9, 40% giveback guard). */
 export function holdDecision(side: "BUY" | "SELL", market: string, profit: number, peak: number, sig: LiveSignal | null, lot = 0.01): "CLOSE" | "HOLD" | "WAIT_TARGET" {
   const target = profitTargetFor(lot);
   if (profit <= -lossLimitFor(lot) || profit >= maxProfitFor(lot)) return "CLOSE";
+  // v16 breakeven lock: after 60% of target, never let the trade turn into a loss.
+  if (peak >= 0.6 * target && profit <= 0.05 * lotSteps(lot)) return "CLOSE";
   if (profit < target) return "WAIT_TARGET";
   const gold = market === "XAUUSD";
   const strong = !!sig && sig.fresh && sig.direction === side && sig.confidence >= (gold ? 70 : 60) && (!gold || sig.trend1h === (side === "BUY" ? "bull" : "bear"));
   if (!strong) return "CLOSE";
-  if (peak > target && profit <= Math.max(target, peak * (1 - GIVEBACK))) return "CLOSE";
+  if (peak > target && profit <= Math.max(target, peak * retainFor(peak, target))) return "CLOSE";
   return "HOLD";
 }
 

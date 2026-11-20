@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//| AurumPulse Bridge EA v15 Pro - 0.01 multi-positions, self-learning |
+//| AurumPulse Bridge EA v16 Pro - 0.01 multi-positions, self-learning |
 //| Fixed 0.01 lots. No SL, no TP. Holds while live app signal is      |
 //| strong, otherwise closes at USD 2+. Closes automatically at USD 3  |
 //| loss. Gold (XAUUSD) uses stricter hold rules and a spread filter.  |
@@ -24,8 +24,10 @@ input int MinEntryGapSeconds = 30;      // minimum time between two entries on t
 input double BalancePerStep = 500;      // every USD 500 of balance ...
 input double MaxLotPerStep = 0.05;      // ... allows up to 0.05 lot on the strongest signal
 input bool UsePendingOrders = true;     // XAUUSD: place limit / stop / stop-limit orders at support & resistance
+input bool UseNewsFilter = true;       // skip new entries +/-15 min around high-impact USD news (MT5 economic calendar)
+input int NewsWindowMinutes = 15;
 input int PendingRefreshMinutes = 15;   // re-place pending orders with fresh levels
-input double MaxGoldSpreadPrice = 1.00;  // skip XAUUSD entry when spread (ask-bid in price, e.g. $1.00) is wider; 0 = off
+input double MaxGoldSpreadPrice = 0.45;  // v16 (Nexus regime filter): skip XAUUSD entry when spread (ask-bid in price, e.g. $1.00) is wider; 0 = off
 
 const double FIXED_LOT = 0.01;   // base lot
 const double MAX_LOT = 0.05;     // tier lot at USD 500 balance (scaled by balance)
@@ -104,17 +106,33 @@ bool TargetReached(double net, double lot) { return net >= PROFIT_TARGET_USD*Lot
 bool LossHit(double net, double lot) { return net <= -LOSS_LIMIT_USD*LotSteps(lot); }
 bool MaxProfitHit(double net, double lot) { return net >= MaxProfitFor(lot); }
 
+// v16 trailing: keep 60% / 70% / 80% of peak once peak reaches 1x / 2x / 3x target.
+double RetainFor(double peak, double tgt) { return peak >= 3*tgt ? 0.80 : peak >= 2*tgt ? 0.70 : 0.60; }
+
+bool NewsBlocked(string &why) {
+   if(!UseNewsFilter) return false;
+   MqlCalendarValue v[]; datetime now=TimeTradeServer(), w=NewsWindowMinutes*60;
+   if(CalendarValueHistory(v, now-w, now+w, NULL, "USD") <= 0) return false;
+   for(int i=0;i<ArraySize(v);i++) {
+      MqlCalendarEvent e;
+      if(CalendarEventById(v[i].event_id,e) && e.importance==CALENDAR_IMPORTANCE_HIGH) { why="High-impact USD news ("+e.name+") within "+IntegerToString(NewsWindowMinutes)+" min; entry skipped"; return true; }
+   }
+   return false;
+}
+
 // Mirrors holdDecision() in the app: 0=wait target, 1=hold, 2=close.
 int HoldDecision(bool buy, bool gold, double profit, double peak, double lot,
                  bool haveSig, string dir, int conf, string trend, bool fresh) {
    if(LossHit(profit, lot) || MaxProfitHit(profit, lot)) return 2;
-   if(!TargetReached(profit, lot)) return 0;
    double tgt = PROFIT_TARGET_USD*LotSteps(lot);
+   // v16 breakeven lock (no SL): once 60% of target was reached, never let it turn into a loss.
+   if(peak >= 0.6*tgt && profit <= 0.05*LotSteps(lot)) return 2;
+   if(!TargetReached(profit, lot)) return 0;
    string side = buy ? "BUY" : "SELL";
    if(!haveSig || !fresh || dir != side) return 2;
    bool trendOk = trend == (buy ? "bull" : "bear");
    if(conf < (gold ? 70 : 60) || (gold && !trendOk)) return 2;
-   if(peak > tgt && profit <= MathMax(tgt, peak*(1.0-GIVEBACK))) return 2;
+   if(peak > tgt && profit <= MathMax(tgt, peak*RetainFor(peak,tgt))) return 2;
    return 1;
 }
 
@@ -257,6 +275,8 @@ void Execute(string id, string market, string direction, double appLot) {
    if(market=="XAUUSD" && MaxGoldSpreadPrice > 0 && (tick.ask-tick.bid) > MaxGoldSpreadPrice) {
       QueueReport(id,false,"",0,"Gold spread "+DoubleToString(tick.ask-tick.bid,2)+" wider than "+DoubleToString(MaxGoldSpreadPrice,2)+"; entry skipped"); return;
    }
+   string newsWhy;
+   if(market=="XAUUSD" && NewsBlocked(newsWhy)) { QueueReport(id,false,"",0,newsWhy); lastStatus=newsWhy; return; }
    // Multi-entry: stack same-direction trades and hedge opposite ones, up to MaxTradesPerPair.
    int mine=0; bool opposite=false; datetime newest=0;
    for(int p=PositionsTotal()-1; p>=0; p--)
@@ -277,7 +297,7 @@ void Execute(string id, string market, string direction, double appLot) {
    }
    GlobalVariablesFlush();
    string comment = COMMENT_PREFIX+market+" "+StringSubstr(id,0,8);
-   // v15: strength = several 0.01 positions, never one big lot.
+   // v16: strength = several 0.01 positions, never one big lot.
    int want = (int)MathMax(1, MathRound(lot/FIXED_LOT));
    string why = "";
    int allowed = DisciplineAllows(direction, want, why);
@@ -445,7 +465,7 @@ void OnTradeTransaction(const MqlTradeTransaction &tr,const MqlTradeRequest &rq,
 void WriteRequirements() {
    int f=FileOpen("My Requirements.txt",FILE_WRITE|FILE_TXT|FILE_ANSI);
    if(f==INVALID_HANDLE) { Print("Cannot write My Requirements: ",GetLastError()); return; }
-   FileWriteString(f,"AurumPulse Bridge v15 - My Requirements\r\nUpdated: "+TimeToString(TimeCurrent())+"\r\n");
+   FileWriteString(f,"AurumPulse Bridge v16 - My Requirements\r\nUpdated: "+TimeToString(TimeCurrent())+"\r\n");
    FileWriteString(f,"No 5% daily loss stop. No 30-minute cooldown after three losses. Fresh valid setups may trade immediately.\r\nLearning "+(SelfLearning?"ON":"OFF")+". Losses adjust only the affected market/session/direction/trend, not every strategy.\r\n");
    FileWriteString(f,"== Evidence-based adjustments ==\r\n");
    string markets[6]={"XAUUSD","USTECm","USTEC_x100m","EURUSD","GBPUSD","USDJPY"};
@@ -554,7 +574,7 @@ int OnInit() {
    // USD cent accounts (USC) are NOT USD accounts. Refuse rather than
    // silently interpreting one cent or another currency as one dollar.
    if(AccountInfoString(ACCOUNT_CURRENCY)!="USD") {
-      Alert("AurumPulse v15 requires a USD account for its USD 2 target / USD 3 loss limit. Account currency: ",AccountInfoString(ACCOUNT_CURRENCY));
+      Alert("AurumPulse v16 requires a USD account for its USD 2 target / USD 3 loss limit. Account currency: ",AccountInfoString(ACCOUNT_CURRENCY));
       return INIT_PARAMETERS_INCORRECT;
    }
    if(StringLen(ConnectKey)!=51 || StringSubstr(ConnectKey,0,3)!="ap_") {
@@ -642,7 +662,7 @@ void OnTimer() {
       ManagePending();
       CloseProfitable();
    }
-   Comment("AurumPulse Bridge v15 Pro - 0.01 multi-positions + self-learning\nStatus: ",lastStatus,
+   Comment("AurumPulse Bridge v16 Pro - 0.01 multi-positions + self-learning\nStatus: ",lastStatus,
       "\nPositions per USD 500 (each 0.01): 1 / 2 (75%+) / 3 (85%+) / 5 (90%+) | SL/TP none | today P/L "+DoubleToString(TodayProfit(),2)+" | learning "+(SelfLearning?"on":"off"),
       "\nREMINDER: each position closes USD 2+, holds to USD 9 if signal strong, closes at USD 3 loss | report: MQL5/Files/My Requirements.txt | max "+IntegerToString(MaxTradesPerPair)+" trades/pair, hedge "+(AllowHedge?"on":"off")+"",
       "\nAuto Trade ON in app = XAUUSD live signals enter | OFF = Take entry now only",

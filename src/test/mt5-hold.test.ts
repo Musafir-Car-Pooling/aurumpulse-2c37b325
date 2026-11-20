@@ -45,3 +45,16 @@ describe("Bridge v9 exits", () => {
     expect(autoEntries({ direction: "SELL", confidence: 73, validUntil: until, scalp: { direction: "SELL", confidence: 70 } })).toHaveLength(1);
   });
 });
+describe("Bridge v16 breakeven + trailing", () => {
+  it("closes at breakeven after peak reached 60% of target", () => {
+    expect(holdDecision("BUY", "XAUUSD", 0.05, 1.2, null)).toBe("CLOSE");
+    expect(holdDecision("BUY", "XAUUSD", 0.05, 1.1, null)).toBe("WAIT_TARGET");
+  });
+  it("retains 60/70/80% of peak at 1x/2x/3x target", () => {
+    const s = { direction: "BUY", confidence: 80, trend1h: "bull" as const, fresh: true };
+    expect(holdDecision("BUY", "XAUUSD", 2.5, 3, s)).toBe("HOLD");
+    expect(holdDecision("BUY", "XAUUSD", 2.7, 4, s)).toBe("CLOSE");
+    expect(holdDecision("BUY", "XAUUSD", 4.7, 6, s)).toBe("CLOSE");
+    expect(holdDecision("BUY", "XAUUSD", 4.9, 6, s)).toBe("HOLD");
+  });
+});
