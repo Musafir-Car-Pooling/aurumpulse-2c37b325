@@ -10,6 +10,7 @@
 <!-- LOVABLE:END -->
 
 - Use the allowlisted market registry and shared pure signal engine for every instrument; this preserves the existing gold strategy while keeping quote precision market-specific.
+- Apply weekend closure by instrument, not globally; crypto scans must still pass freshness checks before orders or alerts.
 - Persist unattended market scans and deduplicated BUY/SELL alerts through the managed authenticated scan job and its transactional database function; browser polling only reads saved results.
 - Persist auto-trading market selection per MT5 link and use the same transactional selected-market queue for scheduled scans and user refreshes; owner updates, queueing and claiming lock the link to prevent disabled markets from being queued or claimed.
 - Share auto-trading controls between home and Connect MT5 independently of signal direction, so users can select markets even when the current signal is WAIT or the market is closed.

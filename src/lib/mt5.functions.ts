@@ -5,7 +5,7 @@ import { scanMarket } from "./market-data";
 import type { Json } from "@/integrations/supabase/types";
 import { autoEntries, canTrade, hashKey, lotForConfidence, newKey } from "./mt5";
 
-const marketEnum = z.enum(["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCHF"]);
+const marketEnum = z.enum(["XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "BTCUSD"]);
 
 export const getMt5Link = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

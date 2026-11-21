@@ -27,7 +27,7 @@ async function premiumOn() {
 export const getPremiumMode = createServerFn({ method: "GET" }).handler(async () => ({ premium: await premiumOn() }));
 
 export const getFreeSignal = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ market: z.enum(["XAUUSD","EURUSD","GBPUSD","USDJPY","USDCHF"]) }).parse(input))
+  .inputValidator((input: unknown) => z.object({ market: z.enum(["XAUUSD","EURUSD","GBPUSD","USDJPY","USDCHF","BTCUSD"]) }).parse(input))
   .handler(async ({ data }) => {
     if (await premiumOn()) throw new Error("PREMIUM_REQUIRED");
     return scanMarket(data.market);

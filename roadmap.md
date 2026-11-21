@@ -27,6 +27,8 @@
 - [ ] Compile bridge EA v3 and verify an entry/profit-close cycle on MT5 demo — MetaEditor and a broker terminal are unavailable here.
 
 ## Selectable auto trading
+- [x] Add BTCUSD to live signals, manual entry, saved auto selection and bridge; verified live Bitcoin scan, saved selection, isolated queue tests, 75 app tests and bridge rules; deliver Bridge v19.
+- [ ] Compile Bridge v19 and verify BTCUSD execution on MT5 demo — MetaEditor/broker terminal unavailable; connected MT5 is offline.
 - [x] Save per-user selected markets and enforce them for automatic entries.
 - [x] Add pair selection on home and Connect MT5; preserve manual entries.
 - [x] Keep confirmed XAUUSD, EURUSD, GBPUSD, USDJPY, USDCHF; remove BTCUSD/USTEC from active feeds and bridge.

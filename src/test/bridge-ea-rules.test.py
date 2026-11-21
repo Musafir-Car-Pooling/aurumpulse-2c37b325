@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'mt5/AurumPulse_Bridge_EA_v18.mq5'
+SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'mt5/AurumPulse_Bridge_EA_v19.mq5'
 
 
 class BridgeRules(unittest.TestCase):
@@ -32,7 +32,11 @@ int main(){
  assert(!SelectedAutoMarket(false,"EURUSD","EURUSD,USDCHF"));
  assert(!SelectedAutoMarket(true,"USD","EURUSD,USDCHF"));
  assert(KnownMarket("XAUUSD") && KnownMarket("EURUSD") && KnownMarket("GBPUSD") && KnownMarket("USDJPY") && KnownMarket("USDCHF"));
- assert(!KnownMarket("BTCUSD") && !KnownMarket("USTECm") && !KnownMarket("USTEC_x100m"));
+ assert(KnownMarket("BTCUSD"));
+ assert(SelectedAutoMarket(true,"BTCUSD","EURUSD,BTCUSD"));
+ assert(!SelectedAutoMarket(false,"BTCUSD","BTCUSD"));
+ assert(!SelectedAutoMarket(true,"BTCUSD","XAUUSD"));
+ assert(!KnownMarket("USTECm") && !KnownMarket("USTEC_x100m"));
 }
 '''
         with tempfile.TemporaryDirectory() as folder:

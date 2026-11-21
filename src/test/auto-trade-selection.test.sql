@@ -9,7 +9,14 @@ DECLARE
  n integer; manual_id uuid; auto_id uuid;
 BEGIN
  INSERT INTO public.mt5_links(user_id,key_hash,auto_trade,auto_markets)
- VALUES(a,ka,true,ARRAY['EURUSD','USDCHF']), (b,kb,true,ARRAY['GBPUSD']);
+ VALUES(a,ka,true,ARRAY['EURUSD','USDCHF','BTCUSD']), (b,kb,true,ARRAY['GBPUSD']);
+
+ IF public.queue_selected_auto_orders('BTCUSD','BUY',s,a) <> 1 THEN
+  RAISE EXCEPTION 'Selected BTCUSD BUY must queue'; END IF;
+ IF public.queue_selected_auto_orders('BTCUSD','SELL',s,a) <> 1 THEN
+  RAISE EXCEPTION 'Selected BTCUSD SELL must queue'; END IF;
+ IF public.queue_selected_auto_orders('BTCUSD','BUY',s,b) <> 0 THEN
+  RAISE EXCEPTION 'Unselected BTCUSD must not queue'; END IF;
 
  IF public.queue_selected_auto_orders('EURUSD','BUY',s,a) <> 1 THEN
   RAISE EXCEPTION 'Selected EURUSD BUY must queue'; END IF;
@@ -30,8 +37,7 @@ BEGIN
   RAISE EXCEPTION 'WAIT must not queue'; END IF;
  IF public.queue_selected_auto_orders('GBPUSD','BUY',jsonb_build_object('validUntil',now()-interval '1 minute'),b) <> 0 THEN
   RAISE EXCEPTION 'Expired signal must not queue'; END IF;
- IF public.queue_selected_auto_orders('BTCUSD','BUY',s,a) <> 0
- OR public.queue_selected_auto_orders('USTECm','BUY',s,a) <> 0
+ IF public.queue_selected_auto_orders('USTECm','BUY',s,a) <> 0
  OR public.queue_selected_auto_orders('USTEC_x100m','BUY',s,a) <> 0 THEN
   RAISE EXCEPTION 'Removed markets must not queue'; END IF;
 
@@ -46,9 +52,9 @@ BEGIN
  IF public.queue_selected_auto_orders('USDCHF','BUY',s,a) <> 0 THEN
   RAISE EXCEPTION 'Auto OFF must not queue'; END IF;
  INSERT INTO public.trade_orders(user_id,market,direction,lot,signal,source)
- VALUES(a,'XAUUSD','BUY',0.01,s,'manual') RETURNING id INTO manual_id;
+ VALUES(a,'BTCUSD','BUY',0.01,s,'manual') RETURNING id INTO manual_id;
  SELECT count(*) INTO n FROM public.claim_mt5_order_v2(ka) WHERE id=manual_id;
- IF n <> 1 THEN RAISE EXCEPTION 'Manual entry must claim while Auto is OFF'; END IF;
+ IF n <> 1 THEN RAISE EXCEPTION 'Manual BTCUSD entry must claim while Auto is OFF'; END IF;
  SELECT count(*) INTO n FROM public.trade_orders WHERE user_id=a AND source='auto' AND status='pending';
  IF n <> 0 THEN RAISE EXCEPTION 'Disabled queued auto entries must expire before claim'; END IF;
 

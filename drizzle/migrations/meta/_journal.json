@@ -120,6 +120,13 @@
       "when": 1795254053354,
       "tag": "0016_five_market_auto_trading",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795254606405,
+      "tag": "0017_restore_btcusd_selected_trading",
+      "breakpoints": true
     }
   ]
 }

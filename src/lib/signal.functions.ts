@@ -7,7 +7,7 @@ export type { SignalResult } from "./signal-engine";
 
 export const getSignal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ market: z.enum(["XAUUSD","EURUSD","GBPUSD","USDJPY","USDCHF"]) }).parse(input))
+  .inputValidator((input: unknown) => z.object({ market: z.enum(["XAUUSD","EURUSD","GBPUSD","USDJPY","USDCHF","BTCUSD"]) }).parse(input))
   .handler(async ({ data, context }) => {
     const { data: ok } = await context.supabase.rpc("has_signal_access", { _user_id: context.userId });
     if (!ok) throw new Error("PREMIUM_REQUIRED");

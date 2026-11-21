@@ -19,10 +19,10 @@ import { getFreeBoard, getFreeSignal, getPremiumMode } from "@/lib/public.functi
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
-    { title: "AurumPulse — Gold & Forex Auto Trading" },
-    { name: "description", content: "Live XAUUSD, EURUSD, GBPUSD, USDJPY and USDCHF signals. Choose your MT5 auto-trading pairs or take a manual entry." },
-    { property: "og:title", content: "AurumPulse — Gold & Forex Auto Trading" },
-    { property: "og:description", content: "Gold and forex signals with selected-pair MT5 auto trading and fresh BUY/SELL alerts. No alerts for WAIT." },
+    { title: "AurumPulse — Gold, Forex & Bitcoin Auto Trading" },
+    { name: "description", content: "Live XAUUSD, EURUSD, GBPUSD, USDJPY, USDCHF and BTCUSD signals. Choose your MT5 auto-trading pairs or take a manual entry." },
+    { property: "og:title", content: "AurumPulse — Gold, Forex & Bitcoin Auto Trading" },
+    { property: "og:description", content: "Gold, forex and Bitcoin signals with selected-pair MT5 auto trading and fresh BUY/SELL alerts. No alerts for WAIT." },
     { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
   ] }), component: Index,
 });
@@ -114,7 +114,7 @@ function Index() {
       {user && access && !allowed && <section className="card-glow mt-6 rounded-lg p-5"><p className="font-display text-3xl text-gold">TRIAL ENDED</p><p className="mt-2 text-sm">Your 3-day free trial has expired. Get a premium package to keep receiving signals.</p><div className="mt-4 grid grid-cols-3 gap-2">{planIds.map(id => <Link key={id} to="/packages" className="rounded-lg border border-gold/40 bg-card p-3 text-center hover:border-gold"><p className="text-xs text-muted-foreground">{PLANS[id].label}</p><p className="font-display text-3xl text-gold">${PLANS[id].price}</p><p className="text-[10px] text-muted-foreground">{PLANS[id].days} {PLANS[id].days === 1 ? "day" : "days"}</p></Link>)}</div><Button asChild className="btn-gold mt-4 w-full"><Link to="/packages">See packages — from $1</Link></Button></section>}
       {user && access && allowed && <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground"><span>{access.state.kind === 'trial' ? `Free trial · ends ${new Date(access.state.until).toLocaleDateString()}` : access.isAdmin ? 'Admin' : `Premium · until ${new Date((access.state as {until:string}).until).toLocaleDateString()}`}</span><Link to="/packages" className="text-gold underline">Packages</Link></div>}
       {allowed && <>
-      <div className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-5" aria-label="Markets">
+      <div className="mt-5 grid grid-cols-3 gap-2" aria-label="Markets">
         {marketIds.map(id => <Button key={id} variant={market===id ? 'default' : 'outline'} aria-pressed={market===id} onClick={() => {setMarket(id);setNotice('');}}>{id}</Button>)}
       </div>
       <div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground"><Radio className={`size-4 shrink-0 ${running ? 'text-bull' : 'text-gold'}`}/><span>{running ? `Scanning · updated ${fmt(latest ?? '')}` : 'Always-on scanner awaiting activation'}{latest && !running ? ` · last update ${fmt(latest)}` : ''}</span></div>

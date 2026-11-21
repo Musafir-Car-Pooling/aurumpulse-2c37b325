@@ -62,11 +62,11 @@ function Mt5Page() {
         <section className="rounded-xl border border-border bg-card p-5 text-sm leading-relaxed">
           <p className="font-semibold">Setup (one time)</p>
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted-foreground">
-            <li>Download the <span className="text-foreground">AurumPulse Bridge EA v18</span> and copy it into MT5 → File → Open Data Folder → MQL5/Experts.</li>
+            <li>Download the <span className="text-foreground">AurumPulse Bridge EA v19</span> and copy it into MT5 → File → Open Data Folder → MQL5/Experts.</li>
             <li>MT5 → Tools → Options → Expert Advisors → tick "Allow WebRequest" and add: <code className="break-all text-gold">{origin}</code></li>
             <li>Attach the EA to any chart, paste your connect key and this address into its settings, and enable Algo Trading.</li>
           </ol>
-          <Button asChild variant="outline" className="mt-4 w-full"><a href="/api/public/mt5/bridge" download="AurumPulse_Bridge_EA_v18.mq5"><Download />Download Bridge EA v18</a></Button>
+          <Button asChild variant="outline" className="mt-4 w-full"><a href="/api/public/mt5/bridge" download="AurumPulse_Bridge_EA_v19.mq5"><Download />Download Bridge EA v19</a></Button>
           <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground"><Download className="h-3 w-3" />Then tap "Take entry now" under any BUY/SELL signal.</p>
         </section>
         <section className="divide-y divide-border rounded-xl border border-border bg-card">
