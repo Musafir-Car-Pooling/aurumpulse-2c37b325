@@ -27,7 +27,7 @@ async function premiumOn() {
 export const getPremiumMode = createServerFn({ method: "GET" }).handler(async () => ({ premium: await premiumOn() }));
 
 export const getFreeSignal = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ market: z.enum(["XAUUSD","USTECm","USTEC_x100m","EURUSD","GBPUSD","USDJPY"]) }).parse(input))
+  .inputValidator((input: unknown) => z.object({ market: z.enum(["XAUUSD","EURUSD","GBPUSD","USDJPY","USDCHF"]) }).parse(input))
   .handler(async ({ data }) => {
     if (await premiumOn()) throw new Error("PREMIUM_REQUIRED");
     return scanMarket(data.market);
@@ -37,7 +37,7 @@ export const getFreeBoard = createServerFn({ method: "GET" }).handler(async () =
   const db = publicClient();
   const [scans, alerts] = await Promise.all([
     db.from("market_scans").select("market,result,status,scanned_at,error").in("market", marketIds),
-    db.from("signal_alerts").select("id,market,direction,result,created_at,valid_until").order("created_at", { ascending: false }).limit(30),
+    db.from("signal_alerts").select("id,market,direction,result,created_at,valid_until").in("market", marketIds).order("created_at", { ascending: false }).limit(30),
   ]);
   if (scans.error) throw scans.error;
   if (alerts.error) throw alerts.error;

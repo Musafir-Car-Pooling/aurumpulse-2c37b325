@@ -11,6 +11,9 @@
 
 - Use the allowlisted market registry and shared pure signal engine for every instrument; this preserves the existing gold strategy while keeping quote precision market-specific.
 - Persist unattended market scans and deduplicated BUY/SELL alerts through the managed authenticated scan job and its transactional database function; browser polling only reads saved results.
+- Persist auto-trading market selection per MT5 link and use the same transactional selected-market queue for scheduled scans and user refreshes; owner updates, queueing and claiming lock the link to prevent disabled markets from being queued or claimed.
+- Share auto-trading controls between home and Connect MT5 independently of signal direction, so users can select markets even when the current signal is WAIT or the market is closed.
+- Serve the current bridge download from its source import rather than a second public copy, and require fresh key-authenticated auto settings before creating pending gold orders; this keeps downloads synchronized and prevents pending entries bypassing the owner's selection.
 - Keep paid messaging disabled until a sender connection is approved, then implement verified durable WhatsApp callback handling before enabling sends; recipient details must never appear in public market responses.
 - Use Nitro's Netlify preset for independent deployments; the existing Lovable wrapper preserves the managed preview target.
 - Home-screen installation is manifest-only, with no app-shell service worker; fresh signals must continue to come from the server, not offline caches.

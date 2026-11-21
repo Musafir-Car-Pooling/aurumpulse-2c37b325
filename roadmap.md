@@ -25,3 +25,10 @@
 - [x] Side menu and a sign-in option stay available when Premium mode is off.
 - [x] Deliver bridge EA v3 with fixed 0.01 lot, no SL/TP, and USD 1 profit exit; numeric rules tested.
 - [ ] Compile bridge EA v3 and verify an entry/profit-close cycle on MT5 demo — MetaEditor and a broker terminal are unavailable here.
+
+## Selectable auto trading
+- [x] Save per-user selected markets and enforce them for automatic entries.
+- [x] Add pair selection on home and Connect MT5; preserve manual entries.
+- [x] Keep confirmed XAUUSD, EURUSD, GBPUSD, USDJPY, USDCHF; remove BTCUSD/USTEC from active feeds and bridge.
+- [x] Test saved selection and automatic queue; deliver Bridge v18 with synchronized app download.
+- [ ] Compile Bridge v18 and verify real selected-pair execution on MT5 demo — MetaEditor/broker terminal unavailable and connected user's MT5 is offline; all five markets are closed on Saturday.

@@ -13,9 +13,9 @@ import { Eye, EyeOff, Lock, Mail, ShieldCheck, TrendingUp, Zap } from "lucide-re
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [
     { title: "Sign in — AurumPulse" },
-    { name: "description", content: "Sign in to AurumPulse and start your 3-day free trial of gold, Bitcoin and forex signals." },
+    { name: "description", content: "Sign in to AurumPulse to connect MT5 and choose auto-trading pairs for gold and forex signals." },
     { property: "og:title", content: "Sign in — AurumPulse" },
-    { property: "og:description", content: "Start a 3-day free trial of live BUY/SELL signals." },
+    { property: "og:description", content: "Connect your MT5 account for selected-pair auto trading and manual BUY/SELL entries." },
     { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
   ] }),
   component: AuthPage,

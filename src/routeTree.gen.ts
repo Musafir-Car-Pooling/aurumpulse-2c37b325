@@ -17,8 +17,10 @@ import { Route as PackagesRouteImport } from './routes/packages'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ApiPublicNowpaymentsRouteImport } from './routes/api/public/nowpayments'
 import { Route as ApiPublicJobsScanMarketsRouteImport } from './routes/api/public/jobs/scan-markets'
+import { Route as ApiPublicMt5BridgeRouteImport } from './routes/api/public/mt5/bridge'
 import { Route as ApiPublicMt5PollRouteImport } from './routes/api/public/mt5/poll'
 import { Route as ApiPublicMt5ReportRouteImport } from './routes/api/public/mt5/report'
+import { Route as ApiPublicMt5SettingsRouteImport } from './routes/api/public/mt5/settings'
 import { Route as ApiPublicMt5SignalRouteImport } from './routes/api/public/mt5/signal'
 
 const IndexRoute = IndexRouteImport.update({
@@ -62,6 +64,11 @@ const ApiPublicJobsScanMarketsRoute =
     path: '/api/public/jobs/scan-markets',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicMt5BridgeRoute = ApiPublicMt5BridgeRouteImport.update({
+  id: '/api/public/mt5/bridge',
+  path: '/api/public/mt5/bridge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicMt5PollRoute = ApiPublicMt5PollRouteImport.update({
   id: '/api/public/mt5/poll',
   path: '/api/public/mt5/poll',
@@ -70,6 +77,11 @@ const ApiPublicMt5PollRoute = ApiPublicMt5PollRouteImport.update({
 const ApiPublicMt5ReportRoute = ApiPublicMt5ReportRouteImport.update({
   id: '/api/public/mt5/report',
   path: '/api/public/mt5/report',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicMt5SettingsRoute = ApiPublicMt5SettingsRouteImport.update({
+  id: '/api/public/mt5/settings',
+  path: '/api/public/mt5/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicMt5SignalRoute = ApiPublicMt5SignalRouteImport.update({
@@ -87,8 +99,10 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/api/public/nowpayments': typeof ApiPublicNowpaymentsRoute
   '/api/public/jobs/scan-markets': typeof ApiPublicJobsScanMarketsRoute
+  '/api/public/mt5/bridge': typeof ApiPublicMt5BridgeRoute
   '/api/public/mt5/poll': typeof ApiPublicMt5PollRoute
   '/api/public/mt5/report': typeof ApiPublicMt5ReportRoute
+  '/api/public/mt5/settings': typeof ApiPublicMt5SettingsRoute
   '/api/public/mt5/signal': typeof ApiPublicMt5SignalRoute
 }
 export interface FileRoutesByTo {
@@ -100,8 +114,10 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/api/public/nowpayments': typeof ApiPublicNowpaymentsRoute
   '/api/public/jobs/scan-markets': typeof ApiPublicJobsScanMarketsRoute
+  '/api/public/mt5/bridge': typeof ApiPublicMt5BridgeRoute
   '/api/public/mt5/poll': typeof ApiPublicMt5PollRoute
   '/api/public/mt5/report': typeof ApiPublicMt5ReportRoute
+  '/api/public/mt5/settings': typeof ApiPublicMt5SettingsRoute
   '/api/public/mt5/signal': typeof ApiPublicMt5SignalRoute
 }
 export interface FileRoutesById {
@@ -114,8 +130,10 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/api/public/nowpayments': typeof ApiPublicNowpaymentsRoute
   '/api/public/jobs/scan-markets': typeof ApiPublicJobsScanMarketsRoute
+  '/api/public/mt5/bridge': typeof ApiPublicMt5BridgeRoute
   '/api/public/mt5/poll': typeof ApiPublicMt5PollRoute
   '/api/public/mt5/report': typeof ApiPublicMt5ReportRoute
+  '/api/public/mt5/settings': typeof ApiPublicMt5SettingsRoute
   '/api/public/mt5/signal': typeof ApiPublicMt5SignalRoute
 }
 export interface FileRouteTypes {
@@ -129,8 +147,10 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/api/public/nowpayments'
     | '/api/public/jobs/scan-markets'
+    | '/api/public/mt5/bridge'
     | '/api/public/mt5/poll'
     | '/api/public/mt5/report'
+    | '/api/public/mt5/settings'
     | '/api/public/mt5/signal'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -142,8 +162,10 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/api/public/nowpayments'
     | '/api/public/jobs/scan-markets'
+    | '/api/public/mt5/bridge'
     | '/api/public/mt5/poll'
     | '/api/public/mt5/report'
+    | '/api/public/mt5/settings'
     | '/api/public/mt5/signal'
   id:
     | '__root__'
@@ -155,8 +177,10 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/api/public/nowpayments'
     | '/api/public/jobs/scan-markets'
+    | '/api/public/mt5/bridge'
     | '/api/public/mt5/poll'
     | '/api/public/mt5/report'
+    | '/api/public/mt5/settings'
     | '/api/public/mt5/signal'
   fileRoutesById: FileRoutesById
 }
@@ -169,8 +193,10 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   ApiPublicNowpaymentsRoute: typeof ApiPublicNowpaymentsRoute
   ApiPublicJobsScanMarketsRoute: typeof ApiPublicJobsScanMarketsRoute
+  ApiPublicMt5BridgeRoute: typeof ApiPublicMt5BridgeRoute
   ApiPublicMt5PollRoute: typeof ApiPublicMt5PollRoute
   ApiPublicMt5ReportRoute: typeof ApiPublicMt5ReportRoute
+  ApiPublicMt5SettingsRoute: typeof ApiPublicMt5SettingsRoute
   ApiPublicMt5SignalRoute: typeof ApiPublicMt5SignalRoute
 }
 
@@ -232,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicJobsScanMarketsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/mt5/bridge': {
+      id: '/api/public/mt5/bridge'
+      path: '/api/public/mt5/bridge'
+      fullPath: '/api/public/mt5/bridge'
+      preLoaderRoute: typeof ApiPublicMt5BridgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/mt5/poll': {
       id: '/api/public/mt5/poll'
       path: '/api/public/mt5/poll'
@@ -244,6 +277,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/mt5/report'
       fullPath: '/api/public/mt5/report'
       preLoaderRoute: typeof ApiPublicMt5ReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/mt5/settings': {
+      id: '/api/public/mt5/settings'
+      path: '/api/public/mt5/settings'
+      fullPath: '/api/public/mt5/settings'
+      preLoaderRoute: typeof ApiPublicMt5SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/mt5/signal': {
@@ -265,8 +305,10 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   ApiPublicNowpaymentsRoute: ApiPublicNowpaymentsRoute,
   ApiPublicJobsScanMarketsRoute: ApiPublicJobsScanMarketsRoute,
+  ApiPublicMt5BridgeRoute: ApiPublicMt5BridgeRoute,
   ApiPublicMt5PollRoute: ApiPublicMt5PollRoute,
   ApiPublicMt5ReportRoute: ApiPublicMt5ReportRoute,
+  ApiPublicMt5SettingsRoute: ApiPublicMt5SettingsRoute,
   ApiPublicMt5SignalRoute: ApiPublicMt5SignalRoute,
 }
 export const routeTree = rootRouteImport

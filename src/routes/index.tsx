@@ -12,16 +12,17 @@ import { PLANS, planIds } from "@/lib/plans";
 import { MARKETS, marketIds, price, type Market } from "@/lib/markets";
 import type { Scan } from "@/lib/market-data";
 import { TakeEntry } from "@/components/TakeEntry";
+import { AutoTradeControls } from "@/components/AutoTradeControls";
 import { BrandLogo } from "@/components/BrandLogo";
 import { InstallApp } from "@/components/InstallApp";
 import { getFreeBoard, getFreeSignal, getPremiumMode } from "@/lib/public.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
-    { title: "AurumPulse — Gold, Nasdaq & Forex Signals" },
-    { name: "description", content: "Live XAUUSD, USTECm, USTEC_x100m, EURUSD, GBPUSD and USDJPY technical signals, with entry, stop loss, targets and BUY/SELL alerts." },
-    { property: "og:title", content: "AurumPulse — Six-Market Signal Monitor" },
-    { property: "og:description", content: "Gold, Nasdaq 100 and forex analysis with fresh BUY/SELL alerts. No alerts for WAIT." },
+    { title: "AurumPulse — Gold & Forex Auto Trading" },
+    { name: "description", content: "Live XAUUSD, EURUSD, GBPUSD, USDJPY and USDCHF signals. Choose your MT5 auto-trading pairs or take a manual entry." },
+    { property: "og:title", content: "AurumPulse — Gold & Forex Auto Trading" },
+    { property: "og:description", content: "Gold and forex signals with selected-pair MT5 auto trading and fresh BUY/SELL alerts. No alerts for WAIT." },
     { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
   ] }), component: Index,
 });
@@ -113,11 +114,12 @@ function Index() {
       {user && access && !allowed && <section className="card-glow mt-6 rounded-lg p-5"><p className="font-display text-3xl text-gold">TRIAL ENDED</p><p className="mt-2 text-sm">Your 3-day free trial has expired. Get a premium package to keep receiving signals.</p><div className="mt-4 grid grid-cols-3 gap-2">{planIds.map(id => <Link key={id} to="/packages" className="rounded-lg border border-gold/40 bg-card p-3 text-center hover:border-gold"><p className="text-xs text-muted-foreground">{PLANS[id].label}</p><p className="font-display text-3xl text-gold">${PLANS[id].price}</p><p className="text-[10px] text-muted-foreground">{PLANS[id].days} {PLANS[id].days === 1 ? "day" : "days"}</p></Link>)}</div><Button asChild className="btn-gold mt-4 w-full"><Link to="/packages">See packages — from $1</Link></Button></section>}
       {user && access && allowed && <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground"><span>{access.state.kind === 'trial' ? `Free trial · ends ${new Date(access.state.until).toLocaleDateString()}` : access.isAdmin ? 'Admin' : `Premium · until ${new Date((access.state as {until:string}).until).toLocaleDateString()}`}</span><Link to="/packages" className="text-gold underline">Packages</Link></div>}
       {allowed && <>
-      <div className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-6" aria-label="Markets">
+      <div className="mt-5 grid grid-cols-3 gap-2 sm:grid-cols-5" aria-label="Markets">
         {marketIds.map(id => <Button key={id} variant={market===id ? 'default' : 'outline'} aria-pressed={market===id} onClick={() => {setMarket(id);setNotice('');}}>{id}</Button>)}
       </div>
       <div className="mt-5 flex items-center gap-2 text-xs text-muted-foreground"><Radio className={`size-4 shrink-0 ${running ? 'text-bull' : 'text-gold'}`}/><span>{running ? `Scanning · updated ${fmt(latest ?? '')}` : 'Always-on scanner awaiting activation'}{latest && !running ? ` · last update ${fmt(latest)}` : ''}</span></div>
       <Button onClick={go} disabled={loading!==null} className="btn-gold mt-5 h-16 w-full rounded-lg font-display text-2xl"><RefreshCw className={loading===market ? 'animate-spin motion-reduce:animate-none' : ''}/>{loading===market ? 'Scanning market…' : 'Signal Now'}</Button>
+      {signedIn && <div className="mt-5"><AutoTradeControls /></div>}
       {err && <p role="alert" className="mt-4 text-sm text-bear">{err}</p>}
       {notice && <div role="status" className="mt-4 border-l-2 border-gold pl-3 text-sm">{notice}</div>}
       {scan && !s && <section className="mt-7 border-y border-border py-6"><p className="font-display text-4xl text-gold">{scan.status === 'closed' ? 'MARKET CLOSED' : scan.status === 'stale' ? 'DELAYED DATA' : 'UNAVAILABLE'}</p><p className="mt-2 text-sm text-muted-foreground">{scan.error}</p><p className="mt-2 text-xs text-muted-foreground">Checked {fmt(scan.scanned_at)}</p></section>}

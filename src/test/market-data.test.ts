@@ -7,12 +7,14 @@ describe('Market feed protections',()=>{
   it('suppresses signals when candles are stale',async()=>{
     vi.useFakeTimers();vi.setSystemTime(now);
     vi.stubGlobal('fetch',vi.fn(async()=>Response.json(chart(900,true))));
-    const scan=await scanMarket('USTECm');expect(scan.status).toBe('stale');expect(scan.result).toBeNull();
+    const scan=await scanMarket('USDCHF');expect(scan.status).toBe('stale');expect(scan.result).toBeNull();
   });
-  it('scales USTEC_x100m quotes down by 100',async()=>{
+  it('uses the USDCHF feed without index scaling',async()=>{
     vi.useFakeTimers();vi.setSystemTime(now);
-    vi.stubGlobal('fetch',vi.fn(async(url: string)=>Response.json(chart(url.includes('60m') ? 3600 : 900))));
-    const scan=await scanMarket('USTEC_x100m');expect(scan.status).toBe('ready');expect(scan.result?.spot).toBe(22.39);
+    const request=vi.fn(async(url: string)=>Response.json(chart(url.includes('60m') ? 3600 : 900)));
+    vi.stubGlobal('fetch',request);
+    const scan=await scanMarket('USDCHF');expect(scan.status).toBe('ready');expect(scan.result?.spot).toBe(2239);
+    expect(request.mock.calls.every(([url])=>url.includes('CHF%3DX'))).toBe(true);
   });
   it('ignores stale gold spot quotes and uses validated futures instead',async()=>{
     vi.useFakeTimers();vi.setSystemTime(now);

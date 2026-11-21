@@ -1,11 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { RefreshCw, Zap } from "lucide-react";
+import { Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Switch } from "@/components/ui/switch";
-import { getMt5Link, listMt5Orders, placeMt5Order, refreshAutoTrade, setAutoTrade } from "@/lib/mt5.functions";
+import { getMt5Link, listMt5Orders, placeMt5Order } from "@/lib/mt5.functions";
 import type { Market } from "@/lib/markets";
 
 type Order = Awaited<ReturnType<typeof listMt5Orders>>[number];
@@ -13,18 +12,10 @@ const label: Record<string, string> = { pending: "Sent — waiting for MT5…", 
 
 export function TakeEntry({ market, direction }: { market: Market; direction: "BUY" | "SELL" }) {
   const readLink = useServerFn(getMt5Link), place = useServerFn(placeMt5Order), list = useServerFn(listMt5Orders);
-  const setAuto = useServerFn(setAutoTrade), refresh = useServerFn(refreshAutoTrade);
-  const [rMsg, setRMsg] = useState(""), [rBusy, setRBusy] = useState(false);
-  const doRefresh = async () => {
-    setRBusy(true); setRMsg("");
-    try { const r = await refresh(); setAutoOn(true);
-      setRMsg(!r.online ? "MT5 bot offline — MT5 aur EA v14 check karein." : r.queued ? `Gold ${r.direction} auto entry MT5 ko bhej di.` : r.waiting ? "Pichli entry abhi MT5 par process ho rahi hai." : `Gold signal ${r.direction} — BUY/SELL aate hi auto entry hogi.`); }
-    catch { setRMsg("Refresh nahi ho saka. Dobara try karein."); } finally { setRBusy(false); }
-  };
-  const [linked, setLinked] = useState<boolean | null>(null), [auto, setAutoOn] = useState(false);
+  const [linked, setLinked] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [err, setErr] = useState("");
   const [orderId, setOrderId] = useState<string | null>(null), [order, setOrder] = useState<Order | null>(null);
-  useEffect(() => { readLink().then(l => { setLinked(!!l); setAutoOn(!!l?.auto_trade); }).catch(() => setLinked(false)); }, [readLink]);
+  useEffect(() => { readLink().then(l => setLinked(!!l)).catch(() => setLinked(false)); }, [readLink]);
   useEffect(() => { setOrderId(null); setOrder(null); setErr(""); }, [market, direction]);
   useEffect(() => {
     if (!orderId) return;
@@ -43,12 +34,6 @@ export function TakeEntry({ market, direction }: { market: Market; direction: "B
   };
   const tone = order?.status === "executed" ? "text-bull" : order?.status === "failed" || order?.status === "expired" ? "text-bear" : "text-gold";
   return <div className="space-y-2">
-    <label className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 text-sm">
-      <span><span className="font-semibold">Auto trade</span><span className="block text-xs text-muted-foreground">{auto ? "On — XAUUSD only, entries follow live gold signals" : "Off — only Take entry now trades"}</span></span>
-      <Switch aria-label="Auto trade" checked={auto} onCheckedChange={async on => { setAutoOn(on); try { await setAuto({ data: { on } }); } catch { setAutoOn(!on); setErr("Could not change auto trade."); } }} />
-    </label>
-    {auto && <Button variant="outline" onClick={() => void doRefresh()} disabled={rBusy} className="h-11 w-full border-gold/40"><RefreshCw className={rBusy ? "animate-spin" : ""} />Refresh auto trade</Button>}
-    {rMsg && <p role="status" className="text-xs text-gold">{rMsg}</p>}
     <Button onClick={() => setOpen(true)} disabled={busy || (!!order && ["pending", "sent"].includes(order.status))} className={`h-14 w-full rounded-lg font-display text-xl ${direction === "BUY" ? "bg-bull" : "bg-bear"} text-background hover:opacity-90`}><Zap />Take entry now</Button>
     {order && <p role="status" className={`text-sm ${tone}`}>{order.market} {order.direction} {order.lot} · {label[order.status]}{order.status === "executed" && order.price ? ` at ${order.price}` : ""}{order.ticket ? ` · #${order.ticket}` : ""}{order.error ? ` · ${order.error}` : ""}</p>}
     {err && <p role="alert" className="text-sm text-bear">{err}</p>}

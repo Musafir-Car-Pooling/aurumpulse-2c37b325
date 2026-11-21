@@ -23,7 +23,7 @@ export async function scanMarket(market: Market): Promise<Scan> {
     if (!latest || !hourly) throw new Error("Insufficient market history");
     if (now.getTime() - latest.time * 1000 > 30 * 60000 || now.getTime() - hourly.time * 1000 > 90 * 60000) return {...base,result:null,status:"stale",error:"The price feed is delayed — no signal alerts."};
     let spot = latest.c;
-    if (market === "XAUUSD") { // gold spot feed is unscaled; USTEC_x100m scaling already applied to candles
+    if (market === "XAUUSD") { // Preserve the gold spot feed and validated futures fallback.
       try {
         const res = await fetch("https://api.gold-api.com/price/XAU", {signal:AbortSignal.timeout(3000)});
         if (res.ok) {

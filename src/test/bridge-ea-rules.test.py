@@ -9,10 +9,38 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'mt5/AurumPulse_Bridge_EA_v17.mq5'
+SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'mt5/AurumPulse_Bridge_EA_v18.mq5'
 
 
 class BridgeRules(unittest.TestCase):
+    def test_selected_auto_market_gate(self):
+        source = SOURCE.read_text()
+        rule = re.search(r'bool SelectedAutoMarket\([^}]+\}', source)
+        self.assertIsNotNone(rule)
+        if rule is None:
+            return
+        known = re.search(r'bool KnownMarket\([^}]+\}', source)
+        self.assertIsNotNone(known)
+        if known is None:
+            return
+        program = '#include <cassert>\n#include <string>\nusing string=std::string;\nint StringFind(string a,string b){auto n=a.find(b);return n==string::npos?-1:(int)n;}\n'
+        program += rule.group() + '\n' + known.group() + '''
+int main(){
+ assert(SelectedAutoMarket(true,"EURUSD","EURUSD,USDCHF"));
+ assert(SelectedAutoMarket(true,"USDCHF","EURUSD,USDCHF"));
+ assert(!SelectedAutoMarket(true,"XAUUSD","EURUSD,USDCHF"));
+ assert(!SelectedAutoMarket(false,"EURUSD","EURUSD,USDCHF"));
+ assert(!SelectedAutoMarket(true,"USD","EURUSD,USDCHF"));
+ assert(KnownMarket("XAUUSD") && KnownMarket("EURUSD") && KnownMarket("GBPUSD") && KnownMarket("USDJPY") && KnownMarket("USDCHF"));
+ assert(!KnownMarket("BTCUSD") && !KnownMarket("USTECm") && !KnownMarket("USTEC_x100m"));
+}
+'''
+        with tempfile.TemporaryDirectory() as folder:
+            path = pathlib.Path(folder)
+            (path / 'selection.cpp').write_text(program)
+            subprocess.run(['g++', str(path / 'selection.cpp'), '-o', str(path / 'selection')], check=True)
+            subprocess.run([str(path / 'selection')], check=True)
+
     def test_fixed_lot_and_two_usd_exit(self):
         source = SOURCE.read_text()
         constants = '\n'.join(re.findall(

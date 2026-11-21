@@ -21,7 +21,7 @@ export const Route = createFileRoute('/api/public/jobs/scan-markets')({
         });
         if(error) throw error;
         const s = scan.result;
-        if (market === 'XAUUSD' && scan.status === 'ready' && s) {
+        if (scan.status === 'ready' && s) {
           for (const e of autoEntries(s)) {
             const {error:qErr} = await supabaseAdmin.rpc('queue_auto_orders',{p_market:market,p_direction:e.direction,
               p_signal:{lot:lotForConfidence(e.confidence),kind:e.kind,setup:e.setup??null,confidence:e.confidence,entry:s.entry,time:s.time,validUntil:s.validUntil} as unknown as Json});

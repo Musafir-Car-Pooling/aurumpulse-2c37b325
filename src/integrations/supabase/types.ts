@@ -64,6 +64,7 @@ export type Database = {
       }
       mt5_links: {
         Row: {
+          auto_markets: string[]
           auto_trade: boolean
           created_at: string
           key_hash: string
@@ -71,6 +72,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auto_markets?: string[]
           auto_trade?: boolean
           created_at?: string
           key_hash: string
@@ -78,6 +80,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auto_markets?: string[]
           auto_trade?: boolean
           created_at?: string
           key_hash?: string
@@ -339,6 +342,15 @@ export type Database = {
         Args: { p_direction: string; p_market: string; p_signal: Json }
         Returns: number
       }
+      queue_selected_auto_orders: {
+        Args: {
+          p_direction: string
+          p_market: string
+          p_signal: Json
+          p_user_id?: string
+        }
+        Returns: number
+      }
       record_market_scan: {
         Args: {
           p_error?: string
@@ -347,6 +359,10 @@ export type Database = {
           p_scanned_at: string
           p_status: string
         }
+        Returns: undefined
+      }
+      save_auto_trade_settings: {
+        Args: { p_markets: string[]; p_on: boolean }
         Returns: undefined
       }
     }
