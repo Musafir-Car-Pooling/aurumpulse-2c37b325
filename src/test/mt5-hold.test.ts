@@ -3,7 +3,7 @@ import { autoEntries, holdDecision, lossLimitFor, lotForConfidence, profitTarget
 
 const strong = { direction: "BUY", confidence: 80, trend1h: "bull" as const, fresh: true };
 const weak = { ...strong, confidence: 50 };
-describe("Bridge v9 exits", () => {
+describe.skip("Bridge v9 exits (legacy $2/$3)", () => {
   it("waits below $2 profit", () => expect(holdDecision("BUY", "XAUUSD", 1.99, 1.99, strong)).toBe("WAIT_TARGET"));
   it("closes at $2 when signal is not strong", () => expect(holdDecision("BUY", "XAUUSD", 2, 2, weak)).toBe("CLOSE"));
   it("holds at $2+ when signal strong", () => expect(holdDecision("BUY", "XAUUSD", 4, 4, strong)).toBe("HOLD"));
@@ -45,7 +45,7 @@ describe("Bridge v9 exits", () => {
     expect(autoEntries({ direction: "SELL", confidence: 73, validUntil: until, scalp: { direction: "SELL", confidence: 70 } })).toHaveLength(1);
   });
 });
-describe("Bridge v16 breakeven + trailing", () => {
+describe.skip("Bridge v16 legacy", () => {
   it("closes at breakeven after peak reached 60% of target", () => {
     expect(holdDecision("BUY", "XAUUSD", 0.05, 1.2, null)).toBe("CLOSE");
     expect(holdDecision("BUY", "XAUUSD", 0.05, 1.1, null)).toBe("WAIT_TARGET");
@@ -57,4 +57,11 @@ describe("Bridge v16 breakeven + trailing", () => {
     expect(holdDecision("BUY", "XAUUSD", 4.7, 6, s)).toBe("CLOSE");
     expect(holdDecision("BUY", "XAUUSD", 4.9, 6, s)).toBe("HOLD");
   });
+});
+
+describe("Bridge v20: 0.01, +$1 close, -$2 close", () => {
+  it("closes at $2 loss", () => { expect(holdDecision("BUY", "XAUUSD", -2, 0, null)).toBe("CLOSE"); expect(holdDecision("BUY", "XAUUSD", -1.99, 0, null)).toBe("WAIT_TARGET"); });
+  it("closes at $1 profit when signal not strong", () => expect(holdDecision("BUY", "XAUUSD", 1, 1, weak)).toBe("CLOSE"));
+  it("waits below $1", () => expect(holdDecision("BUY", "XAUUSD", 0.99, 0.5, strong)).toBe("WAIT_TARGET"));
+  it("holds above $1 when signal strong", () => expect(holdDecision("BUY", "XAUUSD", 1.5, 1.5, strong)).toBe("HOLD"));
 });

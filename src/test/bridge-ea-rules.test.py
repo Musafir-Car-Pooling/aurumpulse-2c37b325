@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
-SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'mt5/AurumPulse_Bridge_EA_v19.mq5'
+SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'mt5/AurumPulse_Bridge_EA_v20.mq5'
 
 
 class BridgeRules(unittest.TestCase):
@@ -59,10 +59,11 @@ int main(){
 #define MathAbs std::abs
 #define MathRound std::round
 #define MathMax std::fmax
+#define IntegerToString(x) ""
 ''' + constants + '\n' + lot_rule + '\n' + target_rule + '\n' + loss_rule + '''
 struct Trade {
   bool Buy(double lot,const char*,double,double sl,double tp,const char*) {
-    assert(lot>=0.01 && lot<=0.05); assert(sl==0); assert(tp==0); return true;
+    assert(lot==0.01); assert(sl==0); assert(tp==0); return true;
   }
   bool Sell(double lot,const char* s,double p,double sl,double tp,const char* c) {
     return Buy(lot,s,p,sl,tp,c);
@@ -70,7 +71,7 @@ struct Trade {
 };
 int main() {
   Trade trade;
-  const char* symbol="XAUUSDm"; const char* comment="AP3 test"; double lot=0.02;
+  const char* symbol="XAUUSDm"; const char* comment="AP-1 XAUUSD"; double lot=0.01;
 ''' + buy + ';\n' + sell + ';\n' + '''
   assert(FIXED_LOT == 0.01);
   assert(LotAllowed(0.01,0.01,100,0.01));
@@ -78,17 +79,10 @@ int main() {
   assert(!LotAllowed(0.01,0.01,100,0.02));
   assert(!LotAllowed(0.01,0.01,100,0));
   assert(LotForConfidence(70)==0.01); assert(LotForConfidence(75)==0.02); assert(LotForConfidence(85)==0.03);
-  assert(!TargetReached(-10,0.01));
-  assert(!TargetReached(1.99,0.01));
-  assert(TargetReached(2.00,0.01));
-  assert(TargetReached(2.01,0.01)); assert(!TargetReached(1.00,0.01));
-  assert(LOSS_LIMIT_USD == 3.00);
-  assert(LossHit(-3.00,0.01));
-  assert(LossHit(-3.01,0.01));
-  assert(LossHit(-10,0.01));
-  assert(!LossHit(-2.99,0.01));
-  assert(!LossHit(0,0.01));
-  assert(LossHit(-6,0.02)); assert(!LossHit(-5.9,0.02)); assert(LossHit(-15,0.05)); assert(TargetReached(4,0.02)); assert(!TargetReached(3.9,0.02));
+  assert(MAX_LOT == 0.01);
+  assert(!TargetReached(0.99,0.01)); assert(TargetReached(1.00,0.01));
+  assert(LOSS_LIMIT_USD == 2.00);
+  assert(LossHit(-2.00,0.01)); assert(!LossHit(-1.99,0.01));
 }
 '''
         with tempfile.TemporaryDirectory() as folder:

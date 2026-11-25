@@ -28,8 +28,8 @@ export function isStale(createdAt: string, now = Date.now()) {
   return now - new Date(createdAt).getTime() > ORDER_MAX_AGE_MS;
 }
 
-export const PROFIT_TARGET_USD = 2;
-export const LOSS_LIMIT_USD = 3;
+export const PROFIT_TARGET_USD = 1;
+export const LOSS_LIMIT_USD = 2;
 export type LiveSignal = { direction: string; confidence: number; trend1h: "bull" | "bear" | "neutral"; fresh: boolean };
 export const MAX_PROFIT_USD = 9;
 export const GIVEBACK = 0.4;
